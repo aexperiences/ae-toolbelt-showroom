@@ -720,9 +720,18 @@
 
       if(t.rating) score+=(t.rating-4)*10;
 
-      return { tech:t, score: blockers.length ? -1 : Math.round(score), miles:mi, driveMin:dm,
-               reasons:reasons, blockers:blockers, stock:stk, weekAfter:after };
-    }).sort(function(a,b){ return b.score-a.score; });
+      /* BLOCKED and BADLY-SUITED are different things, and conflating them is how
+         a dispatcher ends up believing nobody can cover a job. `blocked` is the
+         legal/physical gate; `score` is judgement and may legitimately go
+         negative on a poor-but-permissible option. Never sort one into the other. */
+      return { tech:t, blocked: blockers.length > 0,
+               score: blockers.length ? null : Math.round(score),
+               miles:mi, driveMin:dm, reasons:reasons, blockers:blockers,
+               stock:stk, weekAfter:after };
+    }).sort(function(a,b){
+      if (a.blocked !== b.blocked) return a.blocked ? 1 : -1;
+      return (b.score||0)-(a.score||0);
+    });
   }
 
   /* ====================================================================

@@ -68,7 +68,7 @@
         '<div class="tablewrap"><table><thead><tr><th>When</th><th>Customer</th><th>Trade / task</th>'+
         '<th class="right">Value</th><th class="right">Best match</th><th></th></tr></thead><tbody>'+
         op.map(function(j){ var c=S.customerById(j.customerId), r=S.rateFor(j);
-          var best=S.matchFor(j.id).filter(function(x){return x.score>=0;})[0];
+          var best=S.matchFor(j.id).filter(function(x){return !x.blocked;})[0];
           return '<tr><td><b>'+S.dayLabel(j.date)+'</b><div class="muted small mono">'+S.hhmm(j.start)+' · '+j.hours+' hrs</div></td>'+
             '<td>'+S.esc(c?c.name:"")+'<div class="muted small">'+S.esc(c?c.city:"")+'</div></td>'+
             '<td><span class="dotc" style="background:'+S.tradeColor(j.trade)+'"></span>'+S.esc(j.trade)+
@@ -83,7 +83,7 @@
       var j=S.jobById(state.sel);
       if(j){
         var c=S.customerById(j.customerId), r=S.rateFor(j), rule=S.permitRule(j.task);
-        var ranked=S.matchFor(j.id), ok=ranked.filter(function(x){return x.score>=0;}), bl=ranked.filter(function(x){return x.score<0;});
+        var ranked=S.matchFor(j.id), ok=ranked.filter(function(x){return !x.blocked;}), bl=ranked.filter(function(x){return x.blocked;});
         host.appendChild(S.card(
           '<h2>'+S.esc(c?c.name:"")+' — '+S.dayLabel(j.date)+', '+S.hhmm(j.start)+'–'+S.hhmm(j.end)+'</h2>'+
           '<p class="sub">'+S.esc(j.task)+' · '+S.esc(j.trade)+' · '+S.esc(j.billing)+
@@ -97,7 +97,8 @@
             S.stat("Currently",j.techId?S.techName(j.techId):"OPEN",j.status,j.techId?"good":"watch")+'</div>'+
           '<div class="rowbtns">'+(j.techId?'<button class="btn ghost" id="clear">Clear the assignment</button>':'')+'</div>'+
           '<h3 style="margin-top:20px">Ranked technicians</h3>'+
-          '<p class="sub">Distance, primary trade, parts already on the truck, history with this customer, callback record, and what it does to their week.</p>'+
+          '<p class="sub">Distance, primary trade, parts already on the truck, history with this customer, callback record, and what it does to their week. '+
+        'A negative score means legal but a poor choice \u2014 not that they cannot go.</p>'+
           '<div class="tablewrap"><table><thead><tr><th class="right">Score</th><th>Technician</th><th>Why</th><th class="right">Margin if sent</th><th></th></tr></thead><tbody>'+
           (ok.length?ok.map(function(m){
             var pr=S.rateFor(Object.assign({},j,{techId:m.tech.id}));
@@ -107,7 +108,7 @@
               '<td class="why">'+m.reasons.map(function(x){return '<span class="rz">'+S.esc(x)+'</span>';}).join("")+'</td>'+
               '<td class="right mono">'+S.money2(pr.margin)+'<div class="muted small">'+S.pct(pr.marginPct)+'</div></td>'+
               '<td class="right"><button class="btn" data-a="'+m.tech.id+'">Dispatch</button></td></tr>';
-          }).join(""):'<tr><td colspan="5" class="muted">Nobody clears the hard blockers. Clear a licence, free someone up, or move the job.</td></tr>')+
+          }).join(""):'<tr><td colspan="5" class="muted">Everyone is hard-blocked. Clear a licence, free someone up, or move the job.</td></tr>')+
           '</tbody></table></div>'+
           (bl.length?'<h3 style="margin-top:18px">Cannot take this job</h3><div class="tablewrap"><table><tbody>'+
             bl.map(function(m){ return '<tr><td><b>'+S.esc(m.tech.name)+'</b></td><td>'+
