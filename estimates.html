@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Estimates · Toolbelt OS</title>
+<meta name="description" content="Requested to won, with the margin on the quote before you send it.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/estimates.html">
+<meta property="og:title" content="Estimates · Toolbelt OS">
+<meta property="og:description" content="Requested to won, with the margin on the quote before you send it.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"estimates.html", crumb:"Estimates" });
+  content.appendChild(S.page("Estimates","Requested → quoted → won. The margin is on the quote before it goes out, not discovered afterwards.",
+    '<button class="btn" id="add">+ New estimate</button>'));
+  var host=document.createElement("div"); content.appendChild(host);
+  function render(){
+    host.innerHTML="";
+    var es=S.db().estimates;
+    host.appendChild(S.card('<div class="stats">'+
+      S.stat("Open value",S.money(S.estimateValue()),"Requested, scheduled and quoted","good")+
+      S.stat("Win rate",S.winRate()==null?"—":S.pct(S.winRate()),"Of everything decided")+
+      S.stat("Won",es.filter(function(e){return e.stage==="Won";}).length,"This book")+
+      S.stat("Lost",es.filter(function(e){return e.stage==="Lost";}).length,"Worth a follow-up")+'</div>'+
+      '<div class="pipe">'+S.ESTIMATE_STAGES.map(function(st){
+        return '<div class="pipe-col"><div class="pipe-n">'+es.filter(function(e){return e.stage===st;}).length+
+          '</div><div class="pipe-l">'+S.esc(st)+'</div></div>'; }).join("")+'</div>'));
+    es.forEach(function(e){
+      var c=S.customerById(e.customerId), m=e.amount?((e.amount-e.cost)/e.amount)*100:0;
+      host.appendChild(S.card('<div class="cardhead"><h2>'+S.esc(e.title)+'</h2>'+
+        '<span class="tag"><span class="dotc" style="background:'+S.tradeColor(e.trade)+'"></span>'+S.esc(e.trade)+'</span>'+
+        (e.stage==="Lost"?S.tag("lost","bad"):e.amount?S.tag(S.money(e.amount)+" · "+S.pct(m)+" margin",m>=40?"good":"watch"):S.tag("not priced yet",""))+'</div>'+
+        '<p class="sub">'+S.esc(c?c.name:"")+' · '+S.esc(c?c.city:"")+' · requested '+S.esc(e.requested)+'</p>'+
+        '<p>'+S.esc(e.note)+'</p>'+
+        (e.amount?'<table class="kv"><tbody><tr><th>Quoted</th><td class="mono">'+S.money(e.amount)+'</td></tr>'+
+          '<tr><th>Our cost</th><td class="mono">'+S.money(e.cost)+'</td></tr>'+
+          '<tr class="tot"><th>Margin</th><td class="mono"><b>'+S.money(e.amount-e.cost)+'</b> · '+S.pct(m,1)+'</td></tr></tbody></table>':'')+
+        '<div class="rowbtns"><label class="fld inline"><span>Stage</span><select data-s="'+e.id+'">'+
+        S.ESTIMATE_STAGES.map(function(st){return '<option'+(st===e.stage?" selected":"")+'>'+S.esc(st)+'</option>';}).join("")+
+        '</select></label><a class="btn ghost" href="sign.html">Send for approval</a></div>'));
+    });
+    Array.prototype.forEach.call(host.querySelectorAll("[data-s]"),function(sel){
+      sel.addEventListener("change",function(){ S.moveEstimate(sel.getAttribute("data-s"),sel.value);
+        S.toast("Moved to "+sel.value+".","ok"); render(); }); });
+  }
+  render();
+  document.getElementById("add").addEventListener("click",function(){
+    var cs=S.db().customers;
+    var p=prompt("Which customer?\n\n"+cs.map(function(c,i){return (i+1)+". "+c.name;}).join("\n")); if(!p) return;
+    var c=cs[parseInt(p,10)-1]||cs.filter(function(x){return x.name.toLowerCase().indexOf(String(p).toLowerCase())>=0;})[0];
+    if(!c) return S.toast("No customer matched.","bad");
+    S.addEstimate({customerId:c.id,title:prompt("What is it for?")||"Estimate",
+      trade:prompt("Trade","HVAC")||"HVAC",
+      amount:parseFloat(prompt("Quoted amount (0 if not priced)","0")||"0"),
+      cost:parseFloat(prompt("Your cost","0")||"0"), note:prompt("Notes")||""});
+    S.toast("Logged.","ok"); render();
+  });
+})();
+</script>
+</body>
+</html>

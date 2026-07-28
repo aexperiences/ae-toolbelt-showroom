@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Licences · Toolbelt OS</title>
+<meta name="description" content="Journeyman cards, EPA 608, OSHA and MVR — expiry-dated, worst first, and a lapse pulls the tech off dispatch.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/licences.html">
+<meta property="og:title" content="Licences · Toolbelt OS">
+<meta property="og:description" content="Journeyman cards, EPA 608, OSHA and MVR — expiry-dated, worst first, and a lapse pulls the tech off dispatch.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"licences.html", crumb:"Licences" });
+  content.appendChild(S.page("Licences & tickets",
+    "A lapsed required credential is not a reminder — it removes the technician from dispatch entirely.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+  function render(){
+    host.innerHTML="";
+    var iss=S.licIssues(), blocked=S.cannotDispatch(), du=S.dispatchedUnlicensed(), pg=S.permitGaps();
+    host.appendChild(S.card('<div class="stats">'+
+      S.stat("Blocked from dispatch",blocked.length,blocked.length?blocked.map(function(t){return t.name;}).join(", "):"Everyone is clear",blocked.length?"bad":"good")+
+      S.stat("Already dispatched",du.length,du.length?"Jobs assigned to a tech who cannot legally do them":"No conflicts",du.length?"bad":"good")+
+      S.stat("Permit gaps",pg.length,pg.length?"Closed permit work with no permit number":"All documented",pg.length?"bad":"good")+
+      S.stat("Expiring",iss.filter(function(i){return i.status.state==="expiring";}).length,"Inside "+S.LIC_WARN_DAYS+" days","watch")+
+      S.stat("Expired / missing",iss.filter(function(i){return i.status.state!=="expiring";}).length,"Action required now","bad")+'</div>'));
+  
+    if(du.length) host.appendChild(S.card('<h2 class="warn">Dispatched but not legally clear</h2>'+
+      '<p class="sub">Reassign these before the truck rolls.</p><div class="tablewrap"><table><thead><tr>'+
+      '<th>When</th><th>Tech</th><th>Customer</th><th>Why</th><th></th></tr></thead><tbody>'+
+      du.map(function(x){ return '<tr><td class="mono">'+S.dayLabel(x.job.date)+' '+S.hhmm(x.job.start)+'</td>'+
+        '<td><b>'+S.esc(x.tech.name)+'</b></td><td>'+S.esc(x.customer?x.customer.name:"")+'</td>'+
+        '<td>'+x.why.map(function(y){return S.tag(y,"bad");}).join(" ")+'</td>'+
+        '<td class="right"><button class="btn ghost" data-c="'+x.job.id+'">Clear it</button></td></tr>'; }).join("")+
+      '</tbody></table></div>',"alert"));
+  
+    if(pg.length) host.appendChild(S.card('<h2 class="warn">Permitted work closed with no permit number</h2>'+
+      '<div class="tablewrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Work</th><th>Rule</th><th></th></tr></thead><tbody>'+
+      pg.map(function(g){ return '<tr><td class="mono">'+S.dayLabel(g.job.date)+'</td><td>'+S.esc(g.customer?g.customer.name:"")+'</td>'+
+        '<td>'+S.esc(g.job.task)+'</td><td class="muted small">'+S.esc(g.rule.why)+'</td>'+
+        '<td class="right"><button class="btn ghost" data-p="'+g.job.id+'">Add the number</button></td></tr>'; }).join("")+
+      '</tbody></table></div>',"alert"));
+  
+    host.appendChild(S.card('<h2>Everything due, worst first</h2><div class="tablewrap"><table><thead><tr>'+
+      '<th>Technician</th><th>Credential</th><th>State</th><th class="right">When</th><th>What it means</th></tr></thead><tbody>'+
+      (iss.length?iss.map(function(i){ var b=i.status.state==="expiring"?"watch":"bad";
+        var when=i.status.state==="missing"?"not on file":i.status.days<0?Math.abs(i.status.days)+" days ago":"in "+i.status.days+" days";
+        return '<tr><td><b>'+S.esc(i.tech.name)+'</b><div class="muted small">'+S.esc(i.tech.trade)+' · '+S.esc(i.tech.status)+'</div></td>'+
+          '<td>'+S.esc(i.lic.k)+(i.lic.required?' '+S.tag("required",""):' <span class="muted small">conditional</span>')+'</td>'+
+          '<td>'+S.tag(i.status.state,b)+'</td><td class="right mono">'+when+'</td>'+
+          '<td class="muted small">'+S.esc(i.lic.required&&i.status.state!=="expiring"?"Blocks dispatch until renewed.":i.lic.note)+'</td></tr>';
+      }).join(""):'<tr><td colspan="5" class="muted">Nothing due. Every credential is current.</td></tr>')+'</tbody></table></div>'));
+  
+    host.appendChild(S.card('<h2>The roster</h2><div class="tablewrap"><table class="grid"><thead><tr><th>Technician</th>'+
+      S.LICENCES.map(function(l){return '<th class="vert">'+S.esc(l.k)+'</th>';}).join("")+'</tr></thead><tbody>'+
+      S.db().techs.map(function(t){ return '<tr><td><b>'+S.esc(t.name)+'</b><div class="muted small">'+S.esc(t.trade)+' · '+S.esc(t.truck||"")+'</div></td>'+
+        S.LICENCES.map(function(l){ var st=S.licStatus(t,l.k);
+          var sym=st.state==="complete"||st.state==="current"?"✓":st.state==="expiring"?"!":st.state==="expired"?"✕":st.state==="missing"?"–":"·";
+          var cls=st.state==="expired"||st.state==="missing"?"bad":st.state==="expiring"?"watch":(st.state==="complete"||st.state==="current")?"good":"";
+          return '<td class="cell '+cls+'" title="'+S.esc(l.k+": "+(st.value||(l.required?"not on file":"not applicable")))+'">'+sym+'</td>'; }).join("")+'</tr>';
+      }).join("")+'</tbody></table></div>'));
+  
+    host.appendChild(S.card('<h2>Work that requires a licence and a permit</h2>'+
+      '<div class="tablewrap"><table><thead><tr><th>Work</th><th>Licence required</th><th>Why</th></tr></thead><tbody>'+
+      S.PERMIT_WORK.map(function(p){ return '<tr><td><b>'+S.esc(p.k)+'</b></td><td>'+S.esc(p.lic)+'</td>'+
+        '<td class="muted small">'+S.esc(p.why)+'</td></tr>'; }).join("")+'</tbody></table></div>'+
+      S.srcNote("Permit and licence rules vary by state, county and city. Confirm yours with the authority having jurisdiction before going live. This is not legal or code-compliance advice.")));
+  
+    Array.prototype.forEach.call(host.querySelectorAll("[data-c]"),function(b){
+      b.addEventListener("click",function(){ S.assign(b.getAttribute("data-c"),null); S.toast("Cleared. Reassign it from the board.","ok"); render(); }); });
+    Array.prototype.forEach.call(host.querySelectorAll("[data-p]"),function(b){
+      b.addEventListener("click",function(){ var n=prompt("Permit number for this job"); if(n){ S.setPermit(b.getAttribute("data-p"),n); S.toast("Recorded.","ok"); render(); } }); });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

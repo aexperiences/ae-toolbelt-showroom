@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Truck Stock · Toolbelt OS</title>
+<meta name="description" content="What is on each truck, what the week's jobs will consume, and which jobs are about to become second trips.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/truck.html">
+<meta property="og:title" content="Truck Stock · Toolbelt OS">
+<meta property="og:description" content="What is on each truck, what the week's jobs will consume, and which jobs are about to become second trips.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"truck.html", crumb:"Truck Stock" });
+  content.appendChild(S.page("Truck stock",
+    "A job where the truck is missing a part is a job that becomes two jobs. That is the quietest margin leak in the trades.",""));
+  var risk=S.secondTripRisk(), re=S.reorderFlags();
+  content.appendChild(S.card('<div class="stats">'+
+    S.stat("Second-trip risk",risk.length,risk.length?"Jobs whose truck is short a part":"Every truck is stocked for its jobs",risk.length?"watch":"good")+
+    S.stat("Out of stock",re.filter(function(r){return r.level==="out";}).length,"Part/truck combinations at zero","bad")+
+    S.stat("Running low",re.filter(function(r){return r.level==="low";}).length,"High-value parts down to one","watch")+
+    S.stat("SKUs tracked",S.db().parts.length,"Across "+S.db().techs.length+" trucks")+'</div>'));
+  
+  if(risk.length) content.appendChild(S.card('<h2 class="warn">About to become two trips</h2>'+
+    '<div class="tablewrap"><table><thead><tr><th>When</th><th>Tech</th><th>Customer</th><th>Missing</th></tr></thead><tbody>'+
+    risk.map(function(j){ var c=S.customerById(j.customerId), st=S.stockFor(j.techId,j.parts);
+      return '<tr><td class="mono">'+S.dayLabel(j.date)+' '+S.hhmm(j.start)+'</td><td>'+S.esc(S.techName(j.techId))+'</td>'+
+        '<td>'+S.esc(c?c.name:"")+'</td><td>'+st.missing.map(function(m){return S.tag(m,"bad");}).join(" ")+'</td></tr>'; }).join("")+
+    '</tbody></table></div>',"alert"));
+  
+  content.appendChild(S.card('<h2>Stock by truck</h2><div class="tablewrap"><table class="grid"><thead><tr><th>Part</th><th class="right">Cost</th>'+
+    S.db().techs.filter(function(t){return t.truck&&t.truck.indexOf("Truck")===0;}).map(function(t){
+      return '<th class="vert">'+S.esc(t.name.split(" ")[0])+' · '+S.esc(t.truck)+'</th>'; }).join("")+'</tr></thead><tbody>'+
+    S.db().parts.map(function(p){
+      return '<tr><td><b>'+S.esc(p.name)+'</b><div class="muted small mono">'+S.esc(p.sku)+' · '+S.esc(p.trade)+'</div></td>'+
+        '<td class="right mono">'+S.money2(p.cost)+'<div class="muted small">sells '+S.money2(p.cost*S.RATES.partsMarkup)+'</div></td>'+
+        S.db().techs.filter(function(t){return t.truck&&t.truck.indexOf("Truck")===0;}).map(function(t){
+          var on=(p.stock||{})[t.id];
+          if(on===undefined) return '<td class="cell">·</td>';
+          var cls=on<=0?"bad":(on<=1&&p.cost>=90)?"watch":"good";
+          return '<td class="cell '+cls+'">'+on+'</td>'; }).join("")+'</tr>'; }).join("")+
+    '</tbody></table></div>'+
+    '<div class="srcnote">Parts sell at '+S.RATES.partsMarkup+'× supply-house cost — this shop\'s own draft markup. Live catalogue pricing would come from the distributor\'s feed, which is a vendor integration.</div>'));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Worksheets & Permits · Toolbelt OS</title>
+<meta name="description" content="What was actually done on every job, plus the permit gate that stops permitted work closing undocumented.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/worksheets.html">
+<meta property="og:title" content="Worksheets & Permits · Toolbelt OS">
+<meta property="og:description" content="What was actually done on every job, plus the permit gate that stops permitted work closing undocumented.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"worksheets.html", crumb:"Worksheets & Permits" });
+  content.appendChild(S.page("Worksheets & permits",
+    "The record of what happened on site — and the gate that will not let permitted work close without its number.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+  function render(){
+    host.innerHTML="";
+    var pg=S.permitGaps();
+    var permitted=S.db().jobs.filter(function(j){return S.needsPermit(j.task);});
+    host.appendChild(S.card('<div class="stats">'+
+      S.stat("Permitted jobs",permitted.length,"On the books, all time")+
+      S.stat("Missing a number",pg.length,pg.length?"Closed without documentation":"All documented",pg.length?"bad":"good")+
+      S.stat("Closed this week",S.scoped(S.thisWeek(),"closed").length,"With a worksheet on file")+
+      S.stat("Task catalogue",S.TASKS.length,"Plus "+S.PERMIT_WORK.length+" permitted operations")+'</div>'));
+  
+    if(pg.length) host.appendChild(S.card('<h2 class="warn">Permit numbers missing</h2>'+
+      '<p class="sub">Permitted work closed without its number. An inspector or an insurer asking for this and not finding it is the expensive version of this conversation.</p>'+
+      '<div class="tablewrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Work</th><th>Tech</th><th>Licence it needs</th><th></th></tr></thead><tbody>'+
+      pg.map(function(g){ return '<tr><td class="mono">'+S.dayLabel(g.job.date)+'</td>'+
+        '<td>'+S.esc(g.customer?g.customer.name:"")+'</td><td>'+S.esc(g.job.task)+'</td>'+
+        '<td>'+S.esc(g.tech?g.tech.name:"")+'</td><td>'+S.esc(g.rule.lic)+'</td>'+
+        '<td class="right"><button class="btn" data-p="'+g.job.id+'">Record the number</button></td></tr>'; }).join("")+
+      '</tbody></table></div>',"alert"));
+  
+    host.appendChild(S.card('<h2>Recent worksheets</h2><div class="tablewrap"><table><thead><tr>'+
+      '<th>Date</th><th>Customer</th><th>Tech</th><th>What was done</th><th>Permit</th><th>Proof</th></tr></thead><tbody>'+
+      S.recentClosed(21).slice(0,25).map(function(j){ var c=S.customerById(j.customerId), ps=S.proofState(j);
+        return '<tr><td class="mono">'+S.dayLabel(j.date)+'</td><td>'+S.esc(c?c.name:"")+'</td>'+
+          '<td>'+S.esc(S.techName(j.techId))+'</td>'+
+          '<td>'+S.esc((j.proof&&j.proof.tasks&&j.proof.tasks.length)?j.proof.tasks.join(" · "):j.task)+
+            '<div class="muted small">'+j.photos+' photo(s)'+(j.proof&&j.proof.sig?' · signed':' · not signed')+'</div></td>'+
+          '<td class="mono small">'+(S.needsPermit(j.task)?(j.permitNo?S.esc(j.permitNo):S.tag("MISSING","bad")):'<span class="muted">n/a</span>')+'</td>'+
+          '<td>'+S.tag(ps,S.proofBand(ps))+'</td></tr>'; }).join("")+'</tbody></table></div>'));
+  
+    host.appendChild(S.card('<h2>Work that cannot close without a permit</h2>'+
+      '<div class="tablewrap"><table><thead><tr><th>Operation</th><th>Licence</th><th>Why</th></tr></thead><tbody>'+
+      S.PERMIT_WORK.map(function(p){ return '<tr><td><b>'+S.esc(p.k)+'</b></td><td>'+S.esc(p.lic)+'</td>'+
+        '<td class="muted small">'+S.esc(p.why)+'</td></tr>'; }).join("")+'</tbody></table></div>'+
+      S.srcNote("Permit thresholds vary by jurisdiction. Confirm the list against your city and county before go-live. Not legal or code-compliance advice.")+
+      '<div class="note">Pulling the permit itself happens on the jurisdiction\'s portal — that hop is named as a vendor step rather than implied to be native. The OS tracks the number and the inspection.</div>'));
+  
+    Array.prototype.forEach.call(host.querySelectorAll("[data-p]"),function(b){
+      b.addEventListener("click",function(){ var n=prompt("Permit number"); if(n){ S.setPermit(b.getAttribute("data-p"),n); S.toast("Recorded.","ok"); render(); } }); });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

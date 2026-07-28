@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Referral CRM · Toolbelt OS</title>
+<meta name="description" content="GCs, property managers, realtors and home-warranty desks — cadence, conversion, and which accounts are actually worth having.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/referrals.html">
+<meta property="og:title" content="Referral CRM · Toolbelt OS">
+<meta property="og:description" content="GCs, property managers, realtors and home-warranty desks — cadence, conversion, and which accounts are actually worth having.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"referrals.html", crumb:"Referral CRM" });
+  content.appendChild(S.page("Referral CRM",
+    "Where service work actually comes from. Volume is not the same as value — the book shows both.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+  function render(){
+    host.innerHTML="";
+    var rs=S.db().referrers, od=rs.filter(S.referralOverdue);
+    var ytd=rs.reduce(function(a,r){return a+r.ytd;},0), cv=rs.reduce(function(a,r){return a+r.converted;},0);
+    host.appendChild(S.card('<div class="stats">'+
+      S.stat("Referrals YTD",ytd,"Across "+rs.length+" sources")+
+      S.stat("Converted",cv,S.pct(ytd?cv/ytd*100:0)+" of everything sent","good")+
+      S.stat("Past cadence",od.length,od.length?"Drifting — log a touch":"All current",od.length?"watch":"good")+
+      S.stat("Biggest source",(S.topReferrers()[0]||{}).org||"—",(S.topReferrers()[0]||{}).converted+" jobs from one relationship")+'</div>'));
+    host.appendChild(S.card('<h2>The book</h2>'+
+      '<p class="sub">Sorted by what actually turned into work. Watch the home-warranty line — highest volume, and they set your labor rate.</p>'+
+      '<div class="tablewrap"><table><thead><tr><th>Source</th><th>Type</th><th>Contact</th>'+
+      '<th class="right">Sent</th><th class="right">Converted</th><th>Rate</th><th>Last touch</th><th></th></tr></thead><tbody>'+
+      S.topReferrers().map(function(r){ var o=S.referralOverdue(r), since=Math.abs(S.daysUntil(r.lastTouch)||0);
+        return '<tr class="'+(o?"row-warn":"")+'"><td><b>'+S.esc(r.org)+'</b>'+(r.note?'<div class="muted small">'+S.esc(r.note)+'</div>':'')+'</td>'+
+          '<td>'+S.esc(r.type)+'</td><td>'+S.esc(r.contact)+'<div class="muted small">'+S.esc(r.phone)+'</div></td>'+
+          '<td class="right mono">'+r.ytd+'</td><td class="right mono">'+r.converted+'</td>'+
+          '<td style="min-width:110px">'+S.pct(S.referralConversion(r))+S.bar(S.referralConversion(r),"var(--tang)")+'</td>'+
+          '<td class="mono small">'+(r.cadenceDays?(since+' days ago'+(o?' '+S.tag("overdue","watch"):'')):'<span class="muted">—</span>')+'</td>'+
+          '<td class="right"><button class="btn ghost" data-t="'+r.id+'">Log a touch</button></td></tr>'; }).join("")+
+      '</tbody></table></div>'));
+    Array.prototype.forEach.call(host.querySelectorAll("[data-t]"),function(b){
+      b.addEventListener("click",function(){ var n=prompt("What happened? (optional)"); S.logTouch(b.getAttribute("data-t"),n||"");
+        S.toast("Touch logged.","ok"); render(); }); });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

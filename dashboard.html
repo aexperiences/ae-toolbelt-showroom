@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Command Center · Toolbelt OS</title>
+<meta name="description" content="The whole shop on one screen — booked revenue, margin by trade, callbacks, unlicensed dispatch and what needs a person today.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/dashboard.html">
+<meta property="og:title" content="Command Center · Toolbelt OS">
+<meta property="og:description" content="The whole shop on one screen — booked revenue, margin by trade, callbacks, unlicensed dispatch and what needs a person today.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"dashboard.html", crumb:"Command Center" });
+  var wk=S.thisWeek();
+  content.appendChild(S.page("Command Center",
+    "Computed live from this shop's own jobs. Nothing on this page was typed in by hand.",""));
+  
+  content.appendChild(S.card('<h2>The week, in numbers</h2><p class="sub">Week of '+S.dayLabel(wk)+
+    '. "Booked" is what the week is worth if it runs as scheduled.</p><div class="stats">'+
+    S.kpis().map(function(k){return S.stat(k.k,k.v,k.n,k.band);}).join("")+'</div>'));
+  
+  /* what needs a person */
+  var du=S.dispatchedUnlicensed(wk), pg=S.permitGaps(), op=S.openJobs(wk),
+      st=S.secondTripRisk(wk), cb=S.callbacks(wk), ex=S.proofExceptions(),
+      li=S.licIssues().filter(function(i){return i.status.state==="expired"||i.status.state==="missing";}),
+      ov=S.db().referrers.filter(S.referralOverdue), dc=S.docsAwaiting();
+  function row(b,what,why,href,cta){ return '<tr><td>'+S.tag(b==="bad"?"Now":"Today",b)+'</td><td><b>'+
+    S.esc(what)+'</b><div class="muted small">'+S.esc(why)+'</div></td>'+
+    '<td class="right"><a class="btn ghost" href="'+href+'">'+S.esc(cta)+'</a></td></tr>'; }
+  var t="";
+  if(du.length) t+=row("bad",du.length+" job(s) dispatched to a tech who cannot legally do them",
+    "Expired card, or permitted work without the licence it requires.","licences.html","Fix now");
+  if(pg.length) t+=row("bad",pg.length+" permitted job(s) closed with no permit number",
+    "This is the finding that costs a contractor their licence.","worksheets.html","Document it");
+  if(cb.length) t+=row("bad",cb.length+" callback(s) this week — "+S.money(S.callbackCost(wk))+" absorbed",
+    "Work redone free because something we did failed.","books.html","See the cause");
+  if(op.length) t+=row("watch",op.length+" unassigned job(s) — "+S.openHours(wk).toFixed(1)+" hours",
+    "Booked with the customer and nobody is on it.","dispatch.html","Fill them");
+  if(st.length) t+=row("watch",st.length+" job(s) where the truck is missing a part",
+    "Each one is about to become two trips.","truck.html","Check stock");
+  if(ex.length) t+=row("watch",ex.length+" proof-of-service exception(s)",
+    "Late, off-site arrival, no departure, or no signature.","field.html","Clear them");
+  if(li.length) t+=row("bad",li.length+" licence(s) expired or missing","A lapse removes the tech from dispatch.","licences.html","Review");
+  if(dc.length) t+=row("watch",dc.length+" signature(s) outstanding","Sent, not yet signed.","sign.html","Chase");
+  if(ov.length) t+=row("watch",ov.length+" referral source(s) past cadence","Relationships go cold quietly.","referrals.html","Log a touch");
+  if(!t) t='<tr><td colspan="3" class="muted">Nothing is on fire. Every job is covered, every licence is current, and no job is missing its paperwork.</td></tr>';
+  content.appendChild(S.card('<h2>What needs a person today</h2><p class="sub">Ranked by what actually costs money or creates exposure.</p>'+
+    '<div class="tablewrap"><table><tbody>'+t+'</tbody></table></div>'));
+  
+  /* today's board */
+  var today=S.iso(S.TODAY);
+  var rows=S.db().jobs.filter(function(j){return j.date===today;}).sort(function(a,b){return a.start<b.start?-1:1;});
+  content.appendChild(S.card('<h2>Today on the board</h2><p class="sub">'+S.dayLabel(today)+
+    ' — every job today and where it stands.</p><div class="tablewrap"><table><thead><tr><th>Time</th><th>Customer</th>'+
+    '<th>Tech</th><th>Trade</th><th>How it pays</th><th>Proof</th><th class="right">Margin</th></tr></thead><tbody>'+
+    (rows.length?rows.map(function(j){
+      var c=S.customerById(j.customerId), r=S.rateFor(j), ps=S.proofState(j);
+      return '<tr><td class="mono">'+S.hhmm(j.start)+'–'+S.hhmm(j.end)+'</td>'+
+        '<td><b>'+S.esc(c?c.name:"—")+'</b><div class="muted small">'+S.esc(c?c.city:"")+' · '+S.esc(j.task)+'</div></td>'+
+        '<td>'+(j.techId?S.esc(S.techName(j.techId)):'<i class="muted">unassigned</i>')+'</td>'+
+        '<td><span class="dotc" style="background:'+S.tradeColor(j.trade)+'"></span>'+S.esc(j.trade)+'</td>'+
+        '<td class="small">'+S.esc(j.billing)+'</td>'+
+        '<td>'+S.tag(ps,S.proofBand(ps))+'</td>'+
+        '<td class="right mono '+(r&&r.margin<0?"warn":"")+'">'+(j.techId?S.money2(r.margin):"—")+'</td></tr>';
+    }).join(""):'<tr><td colspan="7" class="muted">Nothing on the board today.</td></tr>')+'</tbody></table></div>'));
+  
+  /* margin truth */
+  var mt=S.marginPctBy(wk,"assigned",function(j){return j.trade;});
+  var mb=S.marginPctBy(wk,"assigned",function(j){return j.billing;});
+  var rt=S.revenueByTrade(wk,"assigned");
+  content.appendChild(S.card('<h2>Where the money is actually made</h2>'+
+    '<p class="sub">Revenue says how busy you were. Margin says whether it was worth it.</p>'+
+    '<div class="tablewrap"><table><thead><tr><th>Trade</th><th class="right">Revenue</th><th class="right">Margin</th><th>Relative</th></tr></thead><tbody>'+
+    Object.keys(rt).sort(function(a,b){return rt[b]-rt[a];}).map(function(k){ var m=mt[k]||0;
+      return '<tr><td><span class="dotc" style="background:'+S.tradeColor(k)+'"></span><b>'+S.esc(k)+'</b></td>'+
+        '<td class="right mono">'+S.money(rt[k])+'</td><td class="right mono '+(m<35?"warn":"")+'">'+S.pct(m)+'</td>'+
+        '<td style="min-width:150px">'+S.bar(m,S.tradeColor(k))+'</td></tr>'; }).join("")+'</tbody></table></div>'+
+    '<div class="tablewrap" style="margin-top:14px"><table><thead><tr><th>How the job gets paid</th><th class="right">Margin</th><th>Why it differs</th></tr></thead><tbody>'+
+    Object.keys(mb).sort(function(a,b){return mb[a]-mb[b];}).map(function(k){
+      return '<tr><td><b>'+S.esc(k)+'</b></td><td class="right mono '+((mb[k]||0)<35?"warn":"")+'">'+S.pct(mb[k]||0)+'</td>'+
+        '<td class="muted small">'+S.esc(S.billing(k).note)+'</td></tr>'; }).join("")+'</tbody></table></div>'+
+    S.srcNote("Computed from this hub's own jobs, pay rates and the published rate rules. No industry benchmark is asserted — none has been sourced into this build.")));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Invoicing & Payroll · Toolbelt OS</title>
+<meta name="description" content="Labor, parts and trip fee kept separate. Overtime, drive time, burden — and the callback line most shops never see.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/money.html">
+<meta property="og:title" content="Invoicing & Payroll · Toolbelt OS">
+<meta property="og:description" content="Labor, parts and trip fee kept separate. Overtime, drive time, burden — and the callback line most shops never see.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"money.html", crumb:"Invoicing & Payroll" });
+  var wk=S.lastWeek();
+  content.appendChild(S.page("Invoicing & payroll",
+    "Week of "+S.dayLabel(wk)+" — the week that finished. Every line traces to a job with a record behind it.",""));
+  
+  content.appendChild(S.card('<div class="stats">'+
+    S.stat("Billable",S.money(S.weekRevenue(wk,"billable")),"Closed, non-warranty jobs","good")+
+    S.stat("Delivered",S.money(S.weekRevenue(wk,"closed")),"Everything closed, including warranty")+
+    S.stat("Callback cost",S.money(S.callbackCost(wk)),S.callbacks(wk).length+" job(s) redone free",S.callbacks(wk).length?"bad":"good")+
+    S.stat("Margin",S.pct(S.weekMarginPct(wk,"closed"),1),"After wages, burden, drive and parts")+'</div>'+
+    (S.callbacks(wk).length?'<div class="note warn">'+S.money(S.callbackCost(wk))+' of labor, burden and parts went back out the door for free. '+
+     'That is not overhead — it is a specific job, done twice.</div>':'')));
+  
+  /* how one job gets its price */
+  var sample=S.scoped(wk,"billable").filter(function(j){return Object.keys(j.parts||{}).length;})[0]||S.scoped(wk,"billable")[0];
+  if(sample){ var r=S.rateFor(sample), c=S.customerById(sample.customerId);
+    content.appendChild(S.card('<h2>How one job gets its price</h2>'+
+      '<p class="sub">'+S.esc(c.name)+' · '+S.dayLabel(sample.date)+' · '+S.esc(sample.task)+'. Every invoice is built exactly this way.</p>'+
+      '<div class="split2"><div><h3>What the customer is billed</h3><table class="kv"><tbody>'+
+        '<tr><th>Labor</th><td class="mono">'+S.money2(r.laborRate)+'/hr × '+r.hours+' hrs = '+S.money2(r.laborBill)+
+          (r.afterHours?' <span class="muted small">(after-hours '+S.RATES.emergencyMult+'×)</span>':'')+'</td></tr>'+
+        '<tr><th>Parts</th><td class="mono">'+S.money2(r.partsCost)+' cost × '+S.RATES.partsMarkup+' = '+S.money2(r.partsBill)+'</td></tr>'+
+        '<tr><th>Trip fee</th><td class="mono">'+S.money2(r.trip)+'</td></tr>'+
+        '<tr class="tot"><th>Invoice</th><td class="mono"><b>'+S.money2(r.revenue)+'</b></td></tr>'+
+      '</tbody></table></div><div><h3>What it cost to deliver</h3><table class="kv"><tbody>'+
+        '<tr><th>Wages</th><td class="mono">'+S.money2(r.wages)+(r.otHrs?' <span class="warn small">incl. '+r.otHrs.toFixed(1)+' OT hrs</span>':'')+'</td></tr>'+
+        '<tr><th>Drive time</th><td class="mono">'+S.money2(r.drive)+'</td></tr>'+
+        '<tr><th>Burden</th><td class="mono">'+S.money2(r.burden)+' <span class="muted small">('+S.pct(S.RATES.burdenPct*100,1)+')</span></td></tr>'+
+        '<tr><th>Mileage</th><td class="mono">'+S.money2(r.mileage)+'</td></tr>'+
+        '<tr><th>Parts at cost</th><td class="mono">'+S.money2(r.partsCost)+'</td></tr>'+
+        '<tr class="tot"><th>Margin</th><td class="mono"><b>'+S.money2(r.margin)+'</b> · '+S.pct(r.marginPct,1)+'</td></tr>'+
+      '</tbody></table></div></div>'+
+      '<div class="note">Three lines, three behaviours. A shop that invoices one flat number cannot tell whether it made money on the labor, the parts, or neither.</div>'));
+  }
+  
+  /* invoices */
+  S.db().customers.forEach(function(c){
+    var lines=S.scoped(wk,"closed").filter(function(j){return j.customerId===c.id;});
+    if(!lines.length) return;
+    var tot=lines.reduce(function(a,j){return a+S.rateFor(j).revenue;},0);
+    content.appendChild(S.card('<div class="cardhead"><h2>'+S.esc(c.name)+'</h2><span class="tag">'+S.esc(c.kind)+'</span>'+
+      (c.agreement&&c.agreement!=="none"?S.tag(c.agreement,"good"):"")+'</div>'+
+      '<div class="tablewrap"><table><thead><tr><th>Date</th><th>Work</th><th>Tech</th><th>How it pays</th>'+
+      '<th class="right">Labor</th><th class="right">Parts</th><th class="right">Trip</th><th>Proof</th><th class="right">Total</th></tr></thead><tbody>'+
+      lines.map(function(j){ var r=S.rateFor(j), ps=S.proofState(j);
+        return '<tr><td class="mono">'+S.dayLabel(j.date)+'</td><td>'+S.esc(j.task)+'</td>'+
+          '<td>'+S.esc(S.techName(j.techId))+'</td><td class="small">'+S.esc(j.billing)+'</td>'+
+          '<td class="right mono">'+S.money2(r.laborBill)+'</td><td class="right mono">'+S.money2(r.partsBill)+'</td>'+
+          '<td class="right mono">'+S.money2(r.trip)+'</td><td>'+S.tag(ps,S.proofBand(ps))+'</td>'+
+          '<td class="right mono">'+S.money2(r.revenue)+'</td></tr>'; }).join("")+
+      '<tr class="tot"><td colspan="8"><b>Total</b></td><td class="right mono"><b>'+S.money2(tot)+'</b></td></tr>'+
+      '</tbody></table></div>'));
+  });
+  
+  /* payroll */
+  content.appendChild(S.card('<h2>Payroll — week of '+S.dayLabel(wk)+'</h2>'+
+    '<div class="tablewrap"><table><thead><tr><th>Technician</th><th class="right">Hours</th><th class="right">OT</th>'+
+    '<th class="right">Wages</th><th class="right">Drive</th><th class="right">Mileage</th><th class="right">Cost to shop</th></tr></thead><tbody>'+
+    S.db().techs.map(function(tc){
+      var mine=S.scoped(wk,"closed").filter(function(j){return j.techId===tc.id;});
+      if(!mine.length) return "";
+      var h=0,ot=0,w=0,dr=0,mi=0,cost=0;
+      mine.forEach(function(j){ var r=S.rateFor(j); h+=j.hours; ot+=r.otHrs; w+=r.wages; dr+=r.drive; mi+=r.mileage; cost+=r.cost; });
+      return '<tr><td><b>'+S.esc(tc.name)+'</b><div class="muted small">'+S.money2(tc.payRate)+'/hr · '+S.esc(tc.trade)+'</div></td>'+
+        '<td class="right mono">'+h.toFixed(1)+'</td><td class="right mono '+(ot?"warn":"")+'">'+(ot?ot.toFixed(1):"—")+'</td>'+
+        '<td class="right mono">'+S.money2(w)+'</td><td class="right mono">'+S.money2(dr)+'</td>'+
+        '<td class="right mono">'+S.money2(mi)+'</td><td class="right mono">'+S.money2(cost)+'</td></tr>'; }).join("")+
+    '</tbody></table></div>'+
+    '<div class="note">Mileage is a reimbursement, not wages. Keeping it out of the wage base is what keeps the overtime calculation and the tax treatment correct.</div>'+
+    S.srcNote("Rate rules are this shop's own draft policy: labor "+S.money2(S.RATES.laborBillPerHr)+"/hr, trip "+S.money2(S.RATES.tripFee)+
+      ", parts "+S.RATES.partsMarkup+"×, after-hours "+S.RATES.emergencyMult+"×, OT past "+S.RATES.otAfterHours+" hrs, burden "+
+      S.pct(S.RATES.burdenPct*100,1)+". Not statutory rates and not tax advice.")+
+    '<div class="note">Taking payment and filing payroll both need a licensed processor. This room produces the numbers; the processor moves the money.</div>'));
+})();
+</script>
+</body>
+</html>

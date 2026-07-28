@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Books & Metrics · Toolbelt OS</title>
+<meta name="description" content="Margin by trade and by how the job gets paid, callback rate by technician, overtime drift — computed, never reconstructed.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/books.html">
+<meta property="og:title" content="Books & Metrics · Toolbelt OS">
+<meta property="og:description" content="Margin by trade and by how the job gets paid, callback rate by technician, overtime drift — computed, never reconstructed.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"books.html", crumb:"Books & Metrics" });
+  var wk=S.thisWeek(), lw=S.lastWeek();
+  content.appendChild(S.page("Books & metrics","Revenue says how busy you were. This page says whether it was worth it.",""));
+  content.appendChild(S.card('<h2>The scoreboard</h2><div class="stats">'+
+    S.kpis().map(function(k){return S.stat(k.k,k.v,k.n,k.band);}).join("")+'</div>'));
+  
+  function tbl(title,sub,rev,mpct,colorFn){
+    var keys=Object.keys(rev).sort(function(a,b){return rev[b]-rev[a];});
+    return S.card('<h2>'+title+'</h2><p class="sub">'+sub+'</p><div class="tablewrap"><table><thead><tr>'+
+      '<th>Segment</th><th class="right">Revenue</th><th class="right">Margin</th><th>Relative</th></tr></thead><tbody>'+
+      keys.map(function(k){ var m=mpct[k]||0;
+        return '<tr><td>'+(colorFn?'<span class="dotc" style="background:'+colorFn(k)+'"></span>':'')+'<b>'+S.esc(k)+'</b></td>'+
+          '<td class="right mono">'+S.money(rev[k])+'</td><td class="right mono '+(m<35?"warn":"")+'">'+S.pct(m,1)+'</td>'+
+          '<td style="min-width:160px">'+S.bar(m,colorFn?colorFn(k):"var(--tang)")+'</td></tr>'; }).join("")+'</tbody></table></div>');
+  }
+  content.appendChild(tbl("Margin by trade","This week's assigned work.",
+    S.revenueByTrade(wk,"assigned"), S.marginPctBy(wk,"assigned",function(j){return j.trade;}), S.tradeColor));
+  content.appendChild(tbl("Margin by how the job gets paid","The quietest lever in a service shop.",
+    S.revenueByBilling(wk,"assigned"), S.marginPctBy(wk,"assigned",function(j){return j.billing;}), null));
+  
+  /* callbacks by tech */
+  var cbt=S.callbacksByTech();
+  content.appendChild(S.card('<h2>Callbacks by technician</h2>'+
+    '<p class="sub">Not to punish anyone. A tech with a pattern usually needs training or better parts, and you cannot see either without the number.</p>'+
+    '<div class="tablewrap"><table><thead><tr><th>Technician</th><th class="right">Callbacks</th><th class="right">Jobs closed</th><th class="right">Rate</th><th>Relative</th></tr></thead><tbody>'+
+    S.db().techs.map(function(t){
+      var closed=S.db().jobs.filter(function(j){return j.techId===t.id&&j.status==="Closed";}).length;
+      var cb=cbt[t.id]||0, rate=closed?(cb/closed)*100:0;
+      if(!closed) return "";
+      return '<tr><td><b>'+S.esc(t.name)+'</b><div class="muted small">'+S.esc(t.trade)+'</div></td>'+
+        '<td class="right mono '+(cb?"warn":"")+'">'+cb+'</td><td class="right mono">'+closed+'</td>'+
+        '<td class="right mono '+(rate>5?"warn":"")+'">'+S.pct(rate,1)+'</td>'+
+        '<td style="min-width:140px">'+S.bar(rate*8,rate>5?"var(--bad)":"var(--good)")+'</td></tr>'; }).join("")+
+    '</tbody></table></div>'));
+  
+  /* honest findings */
+  var mt=S.marginPctBy(wk,"assigned",function(j){return j.trade;});
+  var mb=S.marginPctBy(wk,"assigned",function(j){return j.billing;});
+  var worstTrade=Object.keys(mt).sort(function(a,b){return mt[a]-mt[b];})[0];
+  var worstBill=Object.keys(mb).sort(function(a,b){return mb[a]-mb[b];})[0];
+  var f=[];
+  if(worstTrade) f.push("<b>"+S.esc(worstTrade)+"</b> is your thinnest trade this week at "+S.pct(mt[worstTrade],1)+
+    ". Either the rate is wrong for what it costs to staff, or that work is landing on your most expensive techs.");
+  if(worstBill) f.push("<b>"+S.esc(worstBill)+"</b> returns "+S.pct(mb[worstBill],1)+
+    " — the lowest of your billing types. Mix is a decision, not an accident.");
+  if(S.callbacks(wk).length) f.push("<b>"+S.money(S.callbackCost(wk))+"</b> of work was redone free this week. "+
+    "Every dollar of it was already paid for once.");
+  if(S.overtimeHours(wk,"assigned")) f.push("<b>"+S.overtimeHours(wk,"assigned").toFixed(1)+" overtime hours</b> cost 1.5× on pay and 1× on the invoice. "+
+    "That gap is entirely a dispatch decision.");
+  if(S.openHours(wk)) f.push("<b>"+S.openHours(wk).toFixed(1)+" hours</b> are booked with customers and unassigned — revenue promised and not currently deliverable.");
+  if(S.secondTripRisk().length) f.push("<b>"+S.secondTripRisk().length+" job(s)</b> are going out on a truck missing a part. Each is about to become two trips.");
+  content.appendChild(S.card('<h2>What the numbers are telling you</h2>'+
+    '<p class="sub">Read straight off your own jobs. Uncomfortable findings are shown, not smoothed.</p>'+
+    '<ul class="findings">'+f.map(function(x){return '<li>'+x+'</li>';}).join("")+'</ul>'));
+  
+  content.appendChild(S.card('<h2>Benchmarks</h2><div class="tablewrap"><table><thead><tr><th>Metric</th><th>Your number</th><th>Benchmark</th></tr></thead><tbody>'+
+    '<tr><td>Gross margin</td><td class="mono">'+S.pct(S.weekMarginPct(wk,"assigned"),1)+'</td><td class="muted">'+S.esc(S.BENCH.grossMarginPct.note)+'</td></tr>'+
+    '<tr><td>Callback rate</td><td class="mono">'+(S.callbackRate(wk)==null?"—":S.pct(S.callbackRate(wk),1))+'</td><td class="muted">'+S.esc(S.BENCH.callbackPct.note)+'</td></tr>'+
+    '<tr><td>Proof clean</td><td class="mono">'+(S.proofCompliancePct()==null?"—":S.pct(S.proofCompliancePct()))+'</td><td class="muted">Set your own standard.</td></tr>'+
+    '<tr><td>First-time fix</td><td class="mono">—</td><td class="muted">'+S.esc(S.BENCH.firstTimeFixPct.note)+'</td></tr>'+
+    '</tbody></table></div>'+
+    S.srcNote("Benchmark cells are deliberately blank. No sourced field-service figure has been brought into this build, and a made-up comparison is worse than none.")));
+  
+  content.appendChild(S.card('<h2>What this replaces</h2><div class="chips">'+
+    S.REPLACES.map(function(r){return '<span class="chip static">'+S.esc(r)+'</span>';}).join("")+'</div>'+
+    '<p class="muted small" style="margin-top:10px">Eight subscriptions, each with its own login and its own version of how many hours a tech worked.</p>'));
+})();
+</script>
+</body>
+</html>

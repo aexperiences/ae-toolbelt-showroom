@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Agent Org · Bus · Toolbelt OS</title>
+<meta name="description" content="The five AI department chains, the event bus, and an honest list of what is native and what is a vendor hop.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/org.html">
+<meta property="og:title" content="Agent Org · Bus · Toolbelt OS">
+<meta property="og:description" content="The five AI department chains, the event bus, and an honest list of what is native and what is a vendor hop.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"org.html", crumb:"Agent Org · Bus" });
+  content.appendChild(S.page("The agent org","Five departments. Conclusions route up; work routes down and across.",""));
+  content.appendChild(S.card('<div class="cardhead"><h2>'+S.esc(S.BRAIN.name)+'</h2><span class="tag">'+S.esc(S.BRAIN.role)+'</span></div><p>'+S.esc(S.BRAIN.line)+'</p>'));
+  content.appendChild(S.card('<h2>The departments</h2><div class="tablewrap"><table><thead><tr><th>Department</th><th>Head</th><th>Desk</th><th>What it watches</th></tr></thead><tbody>'+
+    S.SEATS.map(function(s){ return '<tr><td><b>'+S.esc(s.dept)+'</b></td><td>'+S.esc(s.dh)+'</td><td>'+S.esc(s.ae)+'</td>'+
+      '<td class="muted small">'+S.esc(s.focus)+'</td></tr>'; }).join("")+'</tbody></table></div>'));
+  var b=S.bus();
+  content.appendChild(S.card('<h2>The event bus</h2><p class="sub">Everything that has happened in this hub, newest first.</p>'+
+    '<div class="tablewrap"><table><tbody>'+
+    (b.length?b.map(function(e){ return '<tr><td class="mono small">'+S.esc(e.ts.replace("T"," "))+'</td>'+
+      '<td>'+S.tag(e.dept,"")+'</td><td>'+S.esc(e.msg)+'</td></tr>'; }).join(""):
+      '<tr><td class="muted">Nothing yet. Dispatch a job, close one, or move an applicant.</td></tr>')+'</tbody></table></div>'));
+  content.appendChild(S.card('<h2>Native, or a vendor hop — named honestly</h2>'+
+    '<p class="sub">Four things genuinely need an outside party. Claiming them as native would be the kind of thing that gets a contractor in trouble.</p>'+
+    '<div class="tablewrap"><table><thead><tr><th>Capability</th><th>Where it runs</th><th>Detail</th></tr></thead><tbody>'+
+    S.db().systems.map(function(s){ return '<tr><td><b>'+S.esc(s.k)+'</b></td>'+
+      '<td>'+S.tag(s.state,s.state==="Native"?"good":"watch")+'</td><td class="muted small">'+S.esc(s.note)+'</td></tr>'; }).join("")+
+    '</tbody></table></div>'));
+})();
+</script>
+</body>
+</html>

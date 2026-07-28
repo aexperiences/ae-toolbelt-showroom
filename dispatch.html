@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dispatch & Board · Toolbelt OS</title>
+<meta name="description" content="The day board and a match engine that ranks technicians on distance, trade, parts on the truck, callbacks and overtime — showing its reasons.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/dispatch.html">
+<meta property="og:title" content="Dispatch & Board · Toolbelt OS">
+<meta property="og:description" content="The day board and a match engine that ranks technicians on distance, trade, parts on the truck, callbacks and overtime — showing its reasons.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"dispatch.html", crumb:"Dispatch & Board" });
+  var wk=S.thisWeek(), state={sel:null};
+  content.appendChild(S.page("Dispatch & Board",
+    "The week at a glance. Click any job to see ranked technicians — with reasons, so you can argue with the ranking.",
+    '<button class="btn" id="newJob">+ New job</button>'));
+  var host=document.createElement("div"); content.appendChild(host);
+  
+  function days(){ var o=[]; for(var i=0;i<7;i++) o.push(S.iso(S.addDays(new Date(wk+"T12:00:00"),i))); return o; }
+  
+  function render(){
+    host.innerHTML="";
+    var dd=days(), op=S.openJobs(wk);
+    host.appendChild(S.card('<h2>This week</h2><div class="stats">'+
+      S.stat("Jobs",S.jobsInWeek(wk).length,"Booked across "+S.db().customers.length+" customers")+
+      S.stat("Covered",S.pct(S.fillRate(wk)||0),"Fill rate",(S.fillRate(wk)||0)>=95?"good":"watch")+
+      S.stat("Unassigned",S.openHours(wk).toFixed(1)+" hrs",op.length+" jobs with nobody on them",op.length?"watch":"good")+
+      S.stat("Overtime",S.overtimeHours(wk,"assigned").toFixed(1)+" hrs","Paid 1.5×, billed 1×",S.overtimeHours(wk,"assigned")?"watch":"good")+
+      S.stat("Booked value",S.money(S.weekRevenue(wk,"assigned")),"If the week runs as scheduled")+'</div>'));
+  
+    var m='<div class="tablewrap"><table class="matrix"><thead><tr><th>Technician</th>'+
+      dd.map(function(d){return '<th>'+S.dayLabel(d)+'</th>';}).join("")+'</tr></thead><tbody>';
+    var techs=S.db().techs.slice();
+    techs.push({id:null,name:"— unassigned —",trade:""});
+    techs.forEach(function(t){
+      var mine=S.jobsInWeek(wk).filter(function(j){return j.techId===t.id;});
+      if(!mine.length) return;
+      m+='<tr><td class="cnm"><b>'+S.esc(t.name)+'</b>'+(t.trade?'<div class="muted small">'+
+        '<span class="dotc" style="background:'+S.tradeColor(t.trade)+'"></span>'+S.esc(t.trade)+' · '+S.esc(t.truck||"")+'</div>':'')+'</td>';
+      dd.forEach(function(d){
+        var cell=mine.filter(function(j){return j.date===d;}).sort(function(a,b){return a.start<b.start?-1:1;});
+        m+='<td>'+(cell.length?cell.map(function(j){
+          var c=S.customerById(j.customerId), open=!j.techId;
+          return '<button class="chip '+(open?"open":"")+'" data-j="'+j.id+'"><span class="ct">'+S.hhmm(j.start)+
+            '</span><span class="cn">'+S.esc((c?c.name:"").split(" ")[0])+'</span></button>';
+        }).join(""):'<span class="muted">·</span>')+'</td>';
+      });
+      m+='</tr>';
+    });
+    m+='</tbody></table></div>';
+    host.appendChild(S.card('<h2>The week</h2><p class="sub">By technician. Amber cells are jobs nobody is on yet.</p>'+m));
+  
+    if(op.length){
+      host.appendChild(S.card('<h2>Unassigned — '+S.openHours(wk).toFixed(1)+' hours booked with nobody on them</h2>'+
+        '<div class="tablewrap"><table><thead><tr><th>When</th><th>Customer</th><th>Trade / task</th>'+
+        '<th class="right">Value</th><th class="right">Best match</th><th></th></tr></thead><tbody>'+
+        op.map(function(j){ var c=S.customerById(j.customerId), r=S.rateFor(j);
+          var best=S.matchFor(j.id).filter(function(x){return x.score>=0;})[0];
+          return '<tr><td><b>'+S.dayLabel(j.date)+'</b><div class="muted small mono">'+S.hhmm(j.start)+' · '+j.hours+' hrs</div></td>'+
+            '<td>'+S.esc(c?c.name:"")+'<div class="muted small">'+S.esc(c?c.city:"")+'</div></td>'+
+            '<td><span class="dotc" style="background:'+S.tradeColor(j.trade)+'"></span>'+S.esc(j.trade)+
+              '<div class="muted small">'+S.esc(j.task)+(S.needsPermit(j.task)?' '+S.tag("PERMIT","watch"):'')+'</div></td>'+
+            '<td class="right mono">'+S.money(r.revenue)+'</td>'+
+            '<td class="right">'+(best?S.esc(best.tech.name)+'<div class="muted small">score '+best.score+'</div>':'<i class="warn">nobody qualifies</i>')+'</td>'+
+            '<td class="right"><button class="btn ghost" data-j="'+j.id+'">Open</button></td></tr>';
+        }).join("")+'</tbody></table></div>'));
+    }
+  
+    if(state.sel){
+      var j=S.jobById(state.sel);
+      if(j){
+        var c=S.customerById(j.customerId), r=S.rateFor(j), rule=S.permitRule(j.task);
+        var ranked=S.matchFor(j.id), ok=ranked.filter(function(x){return x.score>=0;}), bl=ranked.filter(function(x){return x.score<0;});
+        host.appendChild(S.card(
+          '<h2>'+S.esc(c?c.name:"")+' — '+S.dayLabel(j.date)+', '+S.hhmm(j.start)+'–'+S.hhmm(j.end)+'</h2>'+
+          '<p class="sub">'+S.esc(j.task)+' · '+S.esc(j.trade)+' · '+S.esc(j.billing)+
+            (c&&c.notes?' — <i>'+S.esc(c.notes)+'</i>':'')+'</p>'+
+          (rule?'<div class="note warn"><b>Permitted work.</b> '+S.esc(rule.why)+' Requires <b>'+S.esc(rule.lic)+
+            '</b> and a permit number before this job can close.</div>':'')+
+          '<div class="stats">'+
+            S.stat("Revenue",S.money2(r.revenue),"Labor "+S.money2(r.laborBill)+" · parts "+S.money2(r.partsBill)+" · trip "+S.money2(r.trip))+
+            S.stat("Cost",S.money2(r.cost),"Wages, burden, drive and parts")+
+            S.stat("Margin",S.money2(r.margin)+" · "+S.pct(r.marginPct),r.afterHours?"After-hours rate applied":"Standard rate",r.margin>0?"good":"bad")+
+            S.stat("Currently",j.techId?S.techName(j.techId):"OPEN",j.status,j.techId?"good":"watch")+'</div>'+
+          '<div class="rowbtns">'+(j.techId?'<button class="btn ghost" id="clear">Clear the assignment</button>':'')+'</div>'+
+          '<h3 style="margin-top:20px">Ranked technicians</h3>'+
+          '<p class="sub">Distance, primary trade, parts already on the truck, history with this customer, callback record, and what it does to their week.</p>'+
+          '<div class="tablewrap"><table><thead><tr><th class="right">Score</th><th>Technician</th><th>Why</th><th class="right">Margin if sent</th><th></th></tr></thead><tbody>'+
+          (ok.length?ok.map(function(m){
+            var pr=S.rateFor(Object.assign({},j,{techId:m.tech.id}));
+            return '<tr><td class="right"><b class="score">'+m.score+'</b></td>'+
+              '<td><b>'+S.esc(m.tech.name)+'</b><div class="muted small">'+S.esc(m.tech.trade)+' · '+S.esc(m.tech.city)+
+                ' · '+S.money2(m.tech.payRate)+'/hr'+(m.tech.rating?' · '+m.tech.rating+'★':'')+'</div></td>'+
+              '<td class="why">'+m.reasons.map(function(x){return '<span class="rz">'+S.esc(x)+'</span>';}).join("")+'</td>'+
+              '<td class="right mono">'+S.money2(pr.margin)+'<div class="muted small">'+S.pct(pr.marginPct)+'</div></td>'+
+              '<td class="right"><button class="btn" data-a="'+m.tech.id+'">Dispatch</button></td></tr>';
+          }).join(""):'<tr><td colspan="5" class="muted">Nobody clears the hard blockers. Clear a licence, free someone up, or move the job.</td></tr>')+
+          '</tbody></table></div>'+
+          (bl.length?'<h3 style="margin-top:18px">Cannot take this job</h3><div class="tablewrap"><table><tbody>'+
+            bl.map(function(m){ return '<tr><td><b>'+S.esc(m.tech.name)+'</b></td><td>'+
+              m.blockers.map(function(b){return S.tag(b,"bad");}).join(" ")+'</td></tr>'; }).join("")+
+            '</tbody></table></div><div class="srcnote">Hard blockers are never overridden by a good score.</div>':'')
+        ));
+      }
+    }
+  
+    Array.prototype.forEach.call(host.querySelectorAll("[data-j]"),function(b){
+      b.addEventListener("click",function(){ state.sel=b.getAttribute("data-j"); render();
+        setTimeout(function(){ var c=host.lastChild; if(c&&c.scrollIntoView) c.scrollIntoView({behavior:"smooth",block:"start"}); },30); }); });
+    Array.prototype.forEach.call(host.querySelectorAll("[data-a]"),function(b){
+      b.addEventListener("click",function(){ S.assign(state.sel,b.getAttribute("data-a"));
+        S.toast("Dispatched. The board and the money both updated.","ok"); render(); }); });
+    var cl=host.querySelector("#clear");
+    if(cl) cl.addEventListener("click",function(){ S.assign(state.sel,null); S.toast("Cleared — the job is open again.","ok"); render(); });
+  }
+  render();
+  document.getElementById("newJob").addEventListener("click",function(){
+    var cs=S.db().customers;
+    var pick=prompt("New job — which customer?\n\n"+cs.map(function(c,i){return (i+1)+". "+c.name;}).join("\n"));
+    if(!pick) return;
+    var c=cs[parseInt(pick,10)-1]||cs.filter(function(x){return x.name.toLowerCase().indexOf(String(pick).toLowerCase())>=0;})[0];
+    if(!c) return S.toast("No customer matched that.","bad");
+    var date=prompt("Date (YYYY-MM-DD)",S.iso(S.TODAY)); if(!date) return;
+    var st=prompt("Start (HH:MM, 24h)","09:00"); if(!st) return;
+    var hrs=parseFloat(prompt("Estimated hours","2")||"2");
+    var trade=prompt("Trade — "+S.TRADES.map(function(t){return t.k;}).join(", "),"HVAC")||"HVAC";
+    S.addJob({customerId:c.id,date:date,start:st,hours:hrs,trade:trade,task:prompt("Task","Diagnose and report")||"Diagnose and report"});
+    S.toast("Job added — open and ready to dispatch.","ok"); render();
+  });
+})();
+</script>
+</body>
+</html>

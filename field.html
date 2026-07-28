@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Field & Proof · Toolbelt OS</title>
+<meta name="description" content="Arrive and depart with time, place, tasks, photos and a customer signature — plus offline capture for crawlspaces with no signal.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/field.html">
+<meta property="og:title" content="Field & Proof · Toolbelt OS">
+<meta property="og:description" content="Arrive and depart with time, place, tasks, photos and a customer signature — plus offline capture for crawlspaces with no signal.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"field.html", crumb:"Field & Proof" });
+  var host=document.createElement("div");
+  content.appendChild(S.page("Field & Proof of Service",
+    "What settles a dispute three months later, and what gets you paid on commercial and warranty work.",""));
+  content.appendChild(host);
+  
+  function render(){
+    host.innerHTML="";
+    var comp=S.proofCompliancePct(), ex=S.proofExceptions();
+    var live=S.db().jobs.filter(function(j){return j.status==="On site";});
+    var today=S.iso(S.TODAY);
+    var due=S.db().jobs.filter(function(j){return j.date===today&&j.status==="Scheduled"&&j.techId;});
+  
+    host.appendChild(S.card('<h2>Proof, last '+S.PROOF_WINDOW_DAYS+' days</h2>'+
+      '<p class="sub">A rolling window, not a calendar week — a percentage off one day is noise.</p><div class="stats">'+
+      S.stat("Clean",comp==null?"—":S.pct(comp),S.recentClosed().length+" closed jobs in the window",(comp||0)>=95?"good":"watch")+
+      S.stat("Exceptions",ex.length,"Late, off-site, no departure, no signature",ex.length?"watch":"good")+
+      S.stat("On site now",live.length,"Arrived, not yet departed","good")+
+      S.stat("Due to start today",due.length,"Scheduled, not yet arrived")+
+      S.stat("Geofence",S.PROOF.geofenceMeters+" m","Arrival must land inside this radius")+'</div>'));
+  
+    host.appendChild(S.card('<h2>On site right now</h2>'+(live.length?
+      '<div class="tablewrap"><table><thead><tr><th>Tech</th><th>Customer</th><th>Arrived</th><th>Due out</th><th></th></tr></thead><tbody>'+
+      live.map(function(j){ var c=S.customerById(j.customerId);
+        return '<tr><td><b>'+S.esc(S.techName(j.techId))+'</b></td><td>'+S.esc(c?c.name:"")+
+          '<div class="muted small">'+S.esc(c?c.addr:"")+'</div></td>'+
+          '<td class="mono">'+S.hhmm(j.start)+' '+S.tag("in geofence","good")+'</td><td class="mono">'+S.hhmm(j.end)+'</td>'+
+          '<td class="right"><button class="btn" data-out="'+j.id+'">Close the job</button></td></tr>'; }).join("")+
+      '</tbody></table></div>':'<p class="muted">Nobody is on site at this moment.</p>')));
+  
+    if(due.length){
+      host.appendChild(S.card('<h2>Due to start today</h2>'+
+        '<p class="sub">This is the tech-app action. Try arriving off-site, or with no signal, and watch the record change.</p>'+
+        '<div class="tablewrap"><table><thead><tr><th>Time</th><th>Tech</th><th>Customer</th><th class="right">Arrive as…</th></tr></thead><tbody>'+
+        due.map(function(j){ var c=S.customerById(j.customerId);
+          return '<tr><td class="mono">'+S.hhmm(j.start)+'</td><td>'+S.esc(S.techName(j.techId))+'</td>'+
+            '<td>'+S.esc(c?c.name:"")+'</td><td class="right rowbtns">'+
+            '<button class="btn" data-in="'+j.id+'" data-m="ok">At the address</button>'+
+            '<button class="btn ghost" data-in="'+j.id+'" data-m="geo">Off-site</button>'+
+            '<button class="btn ghost" data-in="'+j.id+'" data-m="off">No signal</button></td></tr>'; }).join("")+
+        '</tbody></table></div>'));
+    }
+  
+    host.appendChild(S.card('<h2>Exceptions to clear</h2>'+
+      '<p class="sub">On commercial, warranty and home-warranty work these are the reason an invoice gets held.</p>'+
+      (ex.length?'<div class="tablewrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Tech</th><th>Issue</th><th>How it pays</th><th class="right">At stake</th></tr></thead><tbody>'+
+      ex.map(function(j){ var c=S.customerById(j.customerId), st=S.proofState(j), r=S.rateFor(j);
+        var risk = st==="No signature" || st==="Arrived off-site" || st==="No departure logged";
+        return '<tr><td class="mono">'+S.dayLabel(j.date)+'</td><td>'+S.esc(c?c.name:"")+'</td>'+
+          '<td>'+S.esc(S.techName(j.techId))+'</td><td>'+S.tag(st,S.proofBand(st))+'</td>'+
+          '<td class="small">'+S.esc(j.billing)+'</td>'+
+          '<td class="right mono '+(risk?"warn":"")+'">'+(risk?S.money2(r.revenue)+" at risk":"documented")+'</td></tr>'; }).join("")+
+      '</tbody></table></div>':'<p class="muted">Nothing outstanding — every closed job in the window has a clean record.</p>')));
+  
+    host.appendChild(S.card('<h2>Crawlspaces, mechanical rooms and dead zones</h2>'+
+      '<p>The field app captures the timestamp and coordinates on the device and syncs when the connection returns. '+
+      'The record keeps the <b>original</b> arrival time, not the sync time — otherwise every rural call would look late.</p>'+
+      '<p class="muted small">Jobs captured offline are labelled as such, so anyone reading the record later can see why '+
+      'the transmission time and the arrival time differ.</p>'));
+  
+    Array.prototype.forEach.call(host.querySelectorAll("[data-in]"),function(b){
+      b.addEventListener("click",function(){ var m=b.getAttribute("data-m");
+        S.arrive(b.getAttribute("data-in"),{geo:m!=="geo",offline:m==="off"});
+        S.toast(m==="geo"?"Arrived OUTSIDE the geofence — flagged for review.":
+                m==="off"?"Captured offline. It syncs with the original time.":"Arrived at the address.", m==="ok"?"ok":"warn");
+        render(); }); });
+    Array.prototype.forEach.call(host.querySelectorAll("[data-out]"),function(b){
+      b.addEventListener("click",function(){ sheet(b.getAttribute("data-out")); }); });
+  }
+  
+  function sheet(jobId){
+    var j=S.jobById(jobId), c=S.customerById(j.customerId), rule=S.permitRule(j.task);
+    var w=document.createElement("div"); w.className="modal-scrim";
+    w.innerHTML='<div class="modal"><h2>Close the job — '+S.esc(c.name)+'</h2>'+
+      '<p class="sub">'+S.esc(j.task)+' · '+S.esc(j.trade)+'</p>'+
+      (rule?'<div class="note warn"><b>Permitted work.</b> '+S.esc(rule.why)+' A permit number is required to close this job.</div>'+
+        '<label class="fld"><span>Permit number</span><input id="pno" value="'+S.esc(j.permitNo||"")+'" placeholder="e.g. PF-2026-1482"></label>':'')+
+      '<h3>What was done</h3><div>'+S.TASKS.map(function(t){
+        return '<label class="chk"><input type="checkbox" value="'+S.esc(t)+'"'+(t===j.task?" checked":"")+'> '+S.esc(t)+'</label>'; }).join("")+'</div>'+
+      '<label class="fld" style="margin-top:14px"><span>Notes for the customer and the file</span><textarea id="nt" rows="3"></textarea></label>'+
+      '<label class="chk"><input type="checkbox" id="sig" checked> Customer signed on the tech\'s phone</label>'+
+      '<div id="err" class="note warn" style="display:none"></div>'+
+      '<div class="rowbtns"><button class="btn" id="save">Close the job</button><button class="btn ghost" id="cx">Cancel</button></div></div>';
+    document.body.appendChild(w);
+    w.querySelector("#cx").addEventListener("click",function(){ w.remove(); });
+    w.querySelector("#save").addEventListener("click",function(){
+      var picked=[]; w.querySelectorAll('input[type=checkbox]').forEach(function(x){ if(x.checked&&x.value) picked.push(x.value); });
+      if(rule){
+        var pno=(w.querySelector("#pno").value||"").trim();
+        if(!pno){ var e=w.querySelector("#err"); e.style.display="block";
+          e.innerHTML="<b>This is permitted work.</b> It cannot be closed without a permit number — that gap is the finding that costs a contractor their licence.";
+          e.scrollIntoView({behavior:"smooth",block:"center"}); return; }
+        S.setPermit(jobId,pno);
+      }
+      S.depart(jobId,picked,null,w.querySelector("#nt").value,w.querySelector("#sig").checked);
+      w.remove(); S.toast("Job closed and documented.","ok"); render();
+    });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

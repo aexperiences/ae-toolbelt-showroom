@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recruiting · ATS · Toolbelt OS</title>
+<meta name="description" content="A pipeline scored against the trades you are actually short, and your own careers page.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/recruiting.html">
+<meta property="og:title" content="Recruiting · ATS · Toolbelt OS">
+<meta property="og:description" content="A pipeline scored against the trades you are actually short, and your own careers page.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"recruiting.html", crumb:"Recruiting · ATS" });
+  content.appendChild(S.page("Recruiting",
+    "Techs are the constraint on every service shop. Applicants are scored against the trades you are actually short right now.",
+    '<button class="btn" id="add">+ Log an applicant</button>'));
+  var host=document.createElement("div"); content.appendChild(host);
+  function render(){
+    host.innerHTML="";
+    var cts=S.pipelineCounts();
+    host.appendChild(S.card('<div class="stats">'+
+      S.stat("In the pipeline",S.db().applicants.filter(function(a){return a.stage!=="Declined"&&a.stage!=="Active";}).length,"Applied through onboarding")+
+      S.stat("Open jobs",S.openJobs(S.thisWeek()).length,S.openHours(S.thisWeek()).toFixed(1)+" hours nobody is on")+
+      S.stat("Techs on the road",S.db().techs.filter(function(t){return t.status==="Active";}).length,"Plus "+S.db().techs.filter(function(t){return t.status!=="Active";}).length+" apprentice/other")+
+      S.stat("Blocked by a licence",S.cannotDispatch().length,"Effectively off the roster",S.cannotDispatch().length?"watch":"good")+'</div>'+
+      '<div class="pipe">'+S.ATS_STAGES.map(function(s){
+        return '<div class="pipe-col"><div class="pipe-n">'+(cts[s]||0)+'</div><div class="pipe-l">'+S.esc(s)+'</div></div>'; }).join("")+'</div>'));
+    host.appendChild(S.card('<h2>The pipeline</h2><p class="sub">The score weights the trade you are short, licences already held, years, and tools.</p>'+
+      '<div class="tablewrap"><table><thead><tr><th>Applicant</th><th>Trade</th><th>Applied</th><th class="right">Fit</th><th>Why</th><th>Stage</th></tr></thead><tbody>'+
+      S.db().applicants.map(function(a){ var sc=S.screenScore(a);
+        return '<tr><td><b>'+S.esc(a.name)+'</b><div class="muted small">'+S.esc(a.city)+' · '+S.esc(a.phone)+'</div></td>'+
+          '<td><span class="dotc" style="background:'+S.tradeColor(a.trade)+'"></span>'+S.esc(a.trade)+'</td>'+
+          '<td class="mono">'+S.esc(a.applied)+'</td><td class="right"><b class="score">'+sc.score+'</b></td>'+
+          '<td class="why">'+sc.reasons.map(function(r){return '<span class="rz">'+S.esc(r)+'</span>';}).join("")+'</td>'+
+          '<td><select data-s="'+a.id+'">'+S.ATS_STAGES.map(function(st){
+            return '<option'+(st===a.stage?" selected":"")+'>'+S.esc(st)+'</option>';}).join("")+'</select></td></tr>'; }).join("")+
+      '</tbody></table></div>'));
+    Array.prototype.forEach.call(host.querySelectorAll("[data-s]"),function(sel){
+      sel.addEventListener("change",function(){ S.moveApplicant(sel.getAttribute("data-s"),sel.value);
+        S.toast("Moved to "+sel.value+".","ok"); render(); }); });
+  }
+  render();
+  document.getElementById("add").addEventListener("click",function(){
+    var n=prompt("Applicant name"); if(!n) return;
+    S.addApplicant({name:n,phone:prompt("Phone","(208) 555-")||"",city:prompt("City","Post Falls")||"",
+      trade:prompt("Trade — "+S.TRADES.map(function(t){return t.k;}).join(", "),"HVAC")||"HVAC",
+      yrs:parseInt(prompt("Years in the trade","0")||"0",10), hasTools:confirm("Has their own hand tools?")});
+    S.toast("Logged.","ok"); render();
+  });
+})();
+</script>
+</body>
+</html>
