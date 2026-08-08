@@ -1151,7 +1151,7 @@
       desc:"A real shop with a dispatcher. Adds the referral book, recruiting, books & metrics and the AI department org.",
       base:"Unlimited techs · dispatcher seat · referral CRM · agent org",
       includes:["dispatch","field","work","licences","truck","estimate","crm","portal","recruit","sign","money","books","org"] },
-    grandsuite: { key:"grandsuite", name:"Grandsuite", rank:3, mo:2200, build:16000,
+    grandsuite: { key:"grandsuite", name:"Grandsuite", rank:3, mo:2200, build:13800,
       desc:"Nothing held back. Multi-location, multi-trade, dedicated environment, data migration and your own branded tech app.",
       base:"Multi-location · multi-trade · dedicated environment · migration · branded app",
       includes:["dispatch","field","work","licences","truck","estimate","crm","portal","recruit","sign","money","books","org","phones","webbook"] }
