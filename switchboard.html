@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Switchboard · Toolbelt OS</title>
+<meta name="description" content="The inbound call becomes a booked job while the caller is still on the line — logged, summarized, and on the dispatch board.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/switchboard.html">
+<meta property="og:title" content="Switchboard · Toolbelt OS">
+<meta property="og:description" content="The inbound call becomes a booked job while the caller is still on the line.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"switchboard.html", crumb:"Switchboard" });
+  content.appendChild(S.page("Switchboard — the phones",
+    "The call becomes a booked job while the caller is still on the line. This floor runs on simulated calls; your real number, recordings and IVR are wired at purchase.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+
+  /* simulated ring/recording audio — synthesized on the spot, clearly labeled */
+  function tone(){ try{
+    var ctx=new (window.AudioContext||window.webkitAudioContext)();
+    var o=ctx.createOscillator(), g=ctx.createGain();
+    o.type="sine"; o.frequency.value=440; g.gain.value=0.06;
+    o.connect(g); g.connect(ctx.destination); o.start();
+    o.frequency.setValueAtTime(440,ctx.currentTime);
+    o.frequency.setValueAtTime(480,ctx.currentTime+0.35);
+    o.frequency.setValueAtTime(440,ctx.currentTime+0.7);
+    g.gain.setValueAtTime(0.06,ctx.currentTime+1.0);
+    g.gain.linearRampToValueAtTime(0.0001,ctx.currentTime+1.4);
+    o.stop(ctx.currentTime+1.45);
+  }catch(e){} }
+
+  function callerName(c){
+    var cust = c.customerId ? S.customerById(c.customerId) : null;
+    return cust ? cust.name : (c.name || c.from);
+  }
+  function historyLine(c){
+    var cust = c.customerId ? S.customerById(c.customerId) : null;
+    if(!cust) return '<span class="muted small">New caller — no history on file. Booking creates the customer record.</span>';
+    var jobs = S.db().jobs.filter(function(j){ return j.customerId===cust.id; });
+    var bits = [];
+    bits.push("<b>"+S.esc(cust.name)+"</b> · "+S.esc(cust.kind)+" · customer since "+S.esc(cust.since));
+    if(jobs.length) bits.push(jobs.length+" job"+(jobs.length>1?"s":"")+" on file");
+    if(cust.agreement) bits.push('<span class="tag">'+S.esc(cust.agreement)+"</span>");
+    if(cust.equip) bits.push('<span class="muted small">'+S.esc(cust.equip)+"</span>");
+    if(cust.notes) bits.push('<span class="muted small">'+S.esc(cust.notes)+"</span>");
+    return bits.join("<br>");
+  }
+  function stTag(st){
+    return st==="ringing" ? S.tag("RINGING","bad") :
+           st==="booked"  ? S.tag("booked → board","good") :
+           st==="callback"? S.tag("callback queued","watch") :
+           S.tag("logged","");
+  }
+
+  function render(){
+    host.innerHTML="";
+    var st=S.callStats(), all=S.calls();
+    var ringing=all.filter(function(c){return c.status==="ringing";});
+    var log=all.filter(function(c){return c.status!=="ringing";});
+
+    host.appendChild(S.card('<div class="stats">'+
+      S.stat("Calls today", st.today, "Simulated sample floor","")+
+      S.stat("Ringing now", st.ringing, st.ringing?"Pick one up below":"Quiet line", st.ringing?"watch":"good")+
+      S.stat("Booked from calls", st.booked, "Straight onto the board","good")+
+      S.stat("Callback queue", st.missed, st.missed?"Missed before open":"Nothing waiting", st.missed?"watch":"good")+
+      S.stat("Handled by AI", st.ai, "Overflow answered off the live board","")+
+      '</div>'));
+
+    if(ringing.length){
+      host.appendChild(S.card('<h2>Ringing now</h2><p class="sub">Answer it yourself, or let the AI receptionist take the overflow — either way it lands on the board, not on a sticky note.</p>'+
+        ringing.map(function(c){
+          return '<div class="card" style="margin:10px 0;padding:14px 16px;">'+
+            '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">'+
+            '<div style="flex:1;min-width:220px;"><b>'+S.esc(callerName(c))+'</b> <span class="mono muted small">'+S.esc(c.from)+'</span>'+
+            '<div class="muted">'+S.esc(c.reason)+'</div></div>'+
+            '<button class="btn" data-ans="'+c.id+'">Answer</button>'+
+            '<button class="btn btn-acc" data-book="'+c.id+'">Book the job</button>'+
+            '<button class="btn ghost" data-ai="'+c.id+'">AI receptionist</button></div>'+
+            '<div style="margin-top:10px;">'+historyLine(c)+'</div></div>';
+        }).join(""),"alert"));
+    }
+
+    host.appendChild(S.card('<h2>The call log</h2><p class="sub">Every call, its outcome, its summary — filed to the record, not to memory.</p>'+
+      '<div class="tablewrap"><table><thead><tr><th>When</th><th>Caller</th><th>About</th><th>By</th><th>Outcome</th><th class="right"></th></tr></thead><tbody>'+
+      log.map(function(c){
+        var dur=c.dur?Math.floor(c.dur/60)+":"+String(c.dur%60).padStart(2,"0"):"—";
+        return '<tr><td class="mono">'+S.esc(S.callLabel(c.when))+'</td>'+
+          '<td><b>'+S.esc(callerName(c))+'</b><div class="mono muted small">'+S.esc(c.from)+' · '+dur+'</div></td>'+
+          '<td>'+S.esc(c.reason)+'</td>'+
+          '<td class="small">'+S.esc(c.by||"—")+'</td>'+
+          '<td>'+stTag(c.status)+'</td>'+
+          '<td class="right"><button class="btn ghost" data-play="'+c.id+'" title="Simulated audio — real recordings arrive when your line is wired">▶</button> '+
+          (c.summary?'<button class="btn ghost" data-sum="'+c.id+'">Summary</button>':'')+
+          (c.status==="callback"?' <button class="btn btn-acc" data-book="'+c.id+'">Book it</button>':'')+
+          '</td></tr>'+
+          '<tr class="sumrow" id="sum-'+c.id+'" style="display:none;"><td></td><td colspan="5"><div class="muted small" style="padding:6px 0 10px;">'+
+          '<b>AI call summary</b> (sample) — '+S.esc(c.summary||"")+'</div></td></tr>';
+      }).join("")+'</tbody></table></div>'));
+
+    host.appendChild(S.card('<h2>Wired at purchase — we take care of it</h2>'+
+      '<p class="sub">This floor demonstrates the Switchboard on simulated calls. When you buy, your real number is ported or forwarded, '+
+      'recording and the AI receptionist go live on your line, and the work is priced into your build fee — <b>phones, from '+S.money(1500)+'</b>. '+
+      'No per-seat charge, no per-minute markup games: it is part of the build, then it is yours.</p>'+
+      '<p class="sub muted small">Simulated audio and sample summaries are marked as such. Nothing on this floor is a recording of a real person.</p>'));
+
+    host.querySelectorAll("[data-ans]").forEach(function(b){ b.onclick=function(){
+      S.answerCall(b.dataset.ans); S.toast("Answered — logged to the record.","ok"); render(); }; });
+    host.querySelectorAll("[data-book]").forEach(function(b){ b.onclick=function(){
+      var id=S.bookFromCall(b.dataset.book,{});
+      S.toast("Booked — the job is OPEN on the board.","ok"); render();
+      var go=document.createElement("div"); }; });
+    host.querySelectorAll("[data-ai]").forEach(function(b){ b.onclick=function(){
+      S.aiHandleCall(b.dataset.ai); S.toast("AI receptionist booked it off the live board.","ok"); render(); }; });
+    host.querySelectorAll("[data-play]").forEach(function(b){ b.onclick=function(){
+      tone(); S.toast("Simulated call audio — real recordings arrive when your line is wired.",""); }; });
+    host.querySelectorAll("[data-sum]").forEach(function(b){ b.onclick=function(){
+      var r=document.getElementById("sum-"+b.dataset.sum);
+      if(r) r.style.display = r.style.display==="none" ? "" : "none"; }; });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

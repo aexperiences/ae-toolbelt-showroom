@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Book a visit · Selkirk Mechanical — Toolbelt OS Web Booking</title>
+<meta name="description" content="24/7 online booking that only offers slots the live dispatch board can actually take. White-label — runs under your brand, on your site.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/book.html">
+<meta property="og:title" content="24/7 Web Booking · Toolbelt OS">
+<meta property="og:description" content="Online booking that only offers slots the live board can actually take.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+<style>
+  body{background:#16110c;}
+  .bookwrap{max-width:760px;margin:0 auto;padding:22px 16px 60px;}
+  .ownerbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#241a10;border:1px solid #3a2c1c;
+    border-radius:12px;padding:10px 14px;margin-bottom:18px;font-size:13px;color:#a8927a;}
+  .ownerbar a{color:#e4832b;text-decoration:none;font-weight:600;}
+  .bhead{display:flex;gap:14px;align-items:center;margin:6px 0 4px;}
+  .bhead img{width:52px;height:52px;border-radius:12px;}
+  .bhead h1{margin:0;font-size:26px;}
+  .bhead .muted{font-size:13px;}
+  .bcard{background:#241a10;border:1px solid #3a2c1c;border-radius:14px;padding:18px;margin-top:14px;}
+  .bcard h2{margin:0 0 4px;font-size:17px;}
+  .bcard .sub{margin:0 0 12px;color:#a8927a;font-size:13px;}
+  .choicerow{display:flex;flex-wrap:wrap;gap:8px;}
+  .choice{border:1px solid #3a2c1c;background:#1b140d;color:#f3e7d4;border-radius:10px;padding:10px 14px;cursor:pointer;font-size:14px;}
+  .choice.on{border-color:#e4832b;background:#2e2013;box-shadow:0 0 0 1px #e4832b inset;}
+  .slotgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;}
+  .slot{border:1px solid #3a2c1c;background:#1b140d;color:#f3e7d4;border-radius:10px;padding:10px 8px;cursor:pointer;text-align:center;font-size:13px;}
+  .slot.on{border-color:#e4832b;background:#2e2013;}
+  .slot small{display:block;color:#a8927a;}
+  .bfield{margin:10px 0;}
+  .bfield label{display:block;font-size:12px;color:#a8927a;margin-bottom:4px;}
+  .bfield input{width:100%;box-sizing:border-box;background:#1b140d;border:1px solid #3a2c1c;border-radius:10px;
+    color:#f3e7d4;padding:11px 12px;font-size:15px;}
+  .bookbtn{width:100%;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:700;
+    background:#e4832b;color:#1d130a;cursor:pointer;margin-top:8px;}
+  .okbox{border:1px solid #4b6b3a;background:#1d2415;border-radius:14px;padding:18px;margin-top:14px;}
+  .okbox h2{color:#8cc06a;margin:0 0 6px;}
+  .credit{margin-top:26px;color:#7d6a55;font-size:12px;text-align:center;}
+  .credit b{color:#a8927a;}
+</style>
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<div class="bookwrap" id="bw">
+  <div class="ownerbar">OWNER PREVIEW — this page runs <b>white-label on your own website</b>, under your brand.
+    It only offers times the live dispatch board can actually take. <a href="switchboard.html">← Back to the OS</a></div>
+  <div class="bhead">
+    <img src="https://www.aexperiences.com/Toolbelt_OS.png" alt="">
+    <div><h1 id="shopName">Book a visit</h1>
+      <div class="muted" id="shopSub"></div></div>
+  </div>
+  <div id="steps"></div>
+  <div class="credit">Powered by <b>Accelerated Experiences LLC</b> · Sample shop, sample calendar — a demonstration floor, saved in your browser.</div>
+</div>
+<script>
+(function(){
+  var S=window.Toolbelt;
+  var shop=S.db().shop;
+  document.getElementById("shopName").textContent="Book a visit — "+shop.name;
+  document.getElementById("shopSub").textContent=shop.city+", "+shop.state+" · "+shop.hours;
+
+  var SERVICES=[
+    {k:"HVAC", t:"Service call", label:"Heating / cooling problem"},
+    {k:"Plumbing", t:"Service call", label:"Plumbing problem"},
+    {k:"Electrical", t:"Service call", label:"Electrical problem"},
+    {k:"HVAC", t:"Maintenance", label:"Tune-up / maintenance"},
+    {k:"HVAC", t:"Estimate", label:"Quote a replacement"}
+  ];
+  var pick={svc:null, slot:null};
+
+  function freeTechCount(dateISO, startHH){
+    var endHH=S.minToHhmm(S.hhmmToMin(startHH)+120);
+    var pseudo={date:dateISO,start:startHH,end:endHH};
+    var n=0;
+    S.db().techs.forEach(function(t){
+      if(t.status!=="Active") return;
+      if(S.licBlockers(t).length) return;
+      if(S.busyAt(t,pseudo)) return;
+      n++;
+    });
+    return n;
+  }
+  function slots(){
+    var out=[];
+    for(var d=0; d<3; d++){
+      var day=S.iso(S.addDays(S.TODAY,d));
+      ["08:00","10:00","13:00","15:00"].forEach(function(st){
+        var free=freeTechCount(day,st);
+        if(free>0) out.push({date:day,start:st,free:free});
+      });
+    }
+    return out;
+  }
+
+  function render(){
+    var host=document.getElementById("steps"); host.innerHTML="";
+    var c1=document.createElement("div"); c1.className="bcard";
+    c1.innerHTML='<h2>1 · What do you need?</h2><p class="sub">Pick the closest fit — the office confirms the details.</p>'+
+      '<div class="choicerow">'+SERVICES.map(function(s,i){
+        return '<button class="choice'+(pick.svc===i?" on":"")+'" data-svc="'+i+'">'+s.label+'</button>';}).join("")+'</div>';
+    host.appendChild(c1);
+
+    var sl=slots();
+    var c2=document.createElement("div"); c2.className="bcard";
+    c2.innerHTML='<h2>2 · Pick a time</h2><p class="sub">These are real openings off the live board — a licensed tech is free in every slot shown. Nothing you can pick will be double-booked.</p>'+
+      '<div class="slotgrid">'+sl.map(function(s,i){
+        return '<button class="slot'+(pick.slot===i?" on":"")+'" data-slot="'+i+'">'+S.dayLabel(s.date)+' '+S.hhmm(s.start)+
+        '<small>'+s.free+' tech'+(s.free>1?'s':'')+' free</small></button>';}).join("")+'</div>';
+    host.appendChild(c2);
+
+    var c3=document.createElement("div"); c3.className="bcard";
+    c3.innerHTML='<h2>3 · Who are you?</h2>'+
+      '<div class="bfield"><label>Name</label><input id="bname" placeholder="Your name"></div>'+
+      '<div class="bfield"><label>Phone</label><input id="bphone" placeholder="(208) 555-0000"></div>'+
+      '<div class="bfield"><label>Address</label><input id="baddr" placeholder="Street, city"></div>'+
+      '<button class="bookbtn" id="goBook">Book it</button>'+
+      '<p class="sub" style="margin-top:10px;">No account, no app to download. You get a confirmation and a live "your tech is on the way" link on the day.</p>';
+    host.appendChild(c3);
+
+    host.querySelectorAll("[data-svc]").forEach(function(b){ b.onclick=function(){ pick.svc=+b.dataset.svc; render(); }; });
+    host.querySelectorAll("[data-slot]").forEach(function(b){ b.onclick=function(){ pick.slot=+b.dataset.slot; render(); }; });
+    document.getElementById("goBook").onclick=function(){
+      var nm=document.getElementById("bname").value.trim();
+      var ph=document.getElementById("bphone").value.trim();
+      var ad=document.getElementById("baddr").value.trim();
+      if(pick.svc===null){ alert("Pick what you need first."); return; }
+      if(pick.slot===null){ alert("Pick a time."); return; }
+      if(!nm){ document.getElementById("bname").focus(); return; }
+      var s=SERVICES[pick.svc], slot=slots()[pick.slot];
+      var custId="c"+Date.now().toString(36);
+      S.save(function(d){
+        d.customers.push({ id:custId, name:nm, kind:"Residential", city:d.shop.city,
+          lat:d.shop.lat, lng:d.shop.lng, addr:ad||"(from booking)", phone:ph||"",
+          since:S.iso(S.TODAY), equip:"", agreement:null, agreementAnnual:0, visitsYr:0,
+          notes:"Booked online — web booking widget." });
+      });
+      S.addJob({ customerId:custId, date:slot.date, start:slot.start, hours:2,
+        trade:s.k, type:s.t, task:s.label, note:"Booked online — 24/7 web booking." });
+      S.save(function(d){
+        d.bus.unshift({ts:new Date().toISOString().slice(0,19),dept:"Web Booking",
+          msg:"Online booking — "+nm+" · "+s.label+" · "+S.dayLabel(slot.date)+" "+S.hhmm(slot.start)+". OPEN on the board."});
+      });
+      var host=document.getElementById("steps");
+      host.innerHTML='<div class="okbox"><h2>You\'re booked.</h2>'+
+        '<p>'+S.esc(s.label)+' · <b>'+S.dayLabel(slot.date)+' at '+S.hhmm(slot.start)+'</b>. '+
+        'The office has it on the board already — you\'ll get a text to confirm, and a live tracking link on the day.</p>'+
+        '<p class="sub" style="color:#a8927a">Owner\'s view: this booking is now an OPEN job on <a href="dispatch.html" style="color:#e4832b">the dispatch board</a>, '+
+        'the customer record exists, and the activity is on the bus. No phone call happened.</p></div>';
+      window.scrollTo(0,0);
+    };
+  }
+  render();
+})();
+</script>
+</body>
+</html>
