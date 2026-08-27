@@ -94,5 +94,17 @@
     S.srcNote("Computed from this hub's own jobs, pay rates and the published rate rules. No industry benchmark is asserted — none has been sourced into this build.")));
 })();
 </script>
+<script>
+(function(){
+  var S=window.Toolbelt; if(!S||!S.DEPTS) return;
+  var host=document.querySelector(".content"); if(!host) return;
+  var items=S.DEPTS.flatMap(function(g){return g.items;}).filter(function(it){return it.icon;});
+  var html='<h2>Every room in the suite</h2><p class="sub">The whole operating system, one tap each.</p>'+
+    '<div class="roomgrid">'+items.map(function(it){
+      return '<a class="roomtile" href="'+it.href+'"><img src="'+it.icon+'" alt="" loading="lazy"><span>'+S.esc(it.label)+'</span></a>';
+    }).join("")+'</div>';
+  host.appendChild(S.card(html));
+})();
+</script>
 </body>
 </html>
