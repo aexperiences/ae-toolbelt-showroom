@@ -595,3 +595,12 @@ td.right+td,th.right+th{padding-left:16px}
 .stat{ min-width:0 }
 .stat .s-v{ font-size:clamp(15px, 4.4vw, 22px); min-width:0; white-space:nowrap; letter-spacing:-.035em }
 .stat.headline .s-v{ font-size:clamp(17px, 5.1vw, 26px) }
+
+
+/* ---- Command Center: every-room tile grid (Momentum-style) ---- */
+.roomgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;}
+.roomtile{display:flex;flex-direction:column;align-items:center;gap:8px;text-decoration:none;padding:12px 6px;border-radius:12px;}
+.roomtile:hover{background:rgba(228,131,43,.08);}
+.roomtile img{width:76px;height:76px;border-radius:18px;object-fit:cover;box-shadow:var(--sh);}
+.roomtile span{font-size:12px;color:var(--ink-2);text-align:center;line-height:1.25;}
+@media (max-width:760px){ .roomgrid{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));} .roomtile img{width:64px;height:64px;border-radius:15px;} }
