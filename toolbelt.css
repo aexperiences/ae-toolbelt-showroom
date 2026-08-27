@@ -98,6 +98,14 @@ body::before{
 .navlink:hover{background:rgba(255,255,255,.05); color:#fbf5ea}
 .navlink.active{background:rgba(242,121,46,.18); color:#fff}
 .navlink.active .ic{opacity:1; color:var(--tang-3)}
+/* --- illustrated room icons (Momentum-derived kit, lives in this repo) --- */
+.navlink .ic-img{width:30px; height:30px; border-radius:8px; object-fit:cover; opacity:1;
+  flex:none; background:#0d1216; box-shadow:0 1px 2px rgba(0,0,0,.35)}
+.navlink.active .ic-img{box-shadow:0 0 0 2px var(--tang-3)}
+.crumb-ic{width:40px; height:40px; border-radius:10px; object-fit:cover; flex:none;
+  margin-right:10px; box-shadow:var(--sh)}
+.mobilebar .mb-img{width:26px; height:26px; border-radius:7px; object-fit:cover; display:block; margin:0 auto}
+@media (max-width:760px){ .crumb-ic{width:32px; height:32px; border-radius:8px; margin-right:8px} }
 .navlink.active::before{
   content:""; position:absolute; left:-12px; top:8px; bottom:8px; width:3px;
   background:var(--tang-3); border-radius:0 3px 3px 0;
