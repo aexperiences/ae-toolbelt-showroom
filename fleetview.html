@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FleetView · Toolbelt OS</title>
+<meta name="description" content="Where every truck is right now — off the technician app's phone GPS, with no hardware to install. On-my-way links for the customer and arrive/leave stamps that become the timesheet.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/fleetview.html">
+<meta property="og:title" content="FleetView · Toolbelt OS">
+<meta property="og:description" content="Live trucks off the tech app's phone GPS. No hardware. On-my-way links and geofence timesheet stamps.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+<style>
+  .fmapwrap{position:relative;background:var(--sunk);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;}
+  .fmap{display:block;width:100%;height:auto;}
+  .flegend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--ink-2);}
+  .flegend span{display:inline-flex;align-items:center;gap:6px;}
+  .fdot{width:11px;height:11px;border-radius:50%;display:inline-block;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);}
+  .trow{display:flex;gap:14px;flex-wrap:wrap;align-items:center;padding:13px 0;border-top:1px solid var(--line-2);}
+  .trow:first-of-type{border-top:0;}
+  .tid{min-width:190px;flex:1;}
+  .tmeta{min-width:210px;flex:1.2;font-size:13px;color:var(--ink-2);}
+  .tbtns{display:flex;gap:8px;flex-wrap:wrap;}
+  .batt{display:inline-block;min-width:38px;text-align:center;border-radius:6px;padding:1px 6px;font-size:11px;
+        font-family:var(--mono);border:1px solid var(--line);}
+  .batt.low{background:var(--bad-w);border-color:var(--bad);color:var(--bad);}
+  .omwbox{margin-top:10px;padding:10px 12px;background:var(--good-w);border:1px solid var(--good);
+          border-radius:10px;font-size:13px;word-break:break-all;}
+</style>
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"fleetview.html", crumb:"FleetView" });
+  content.appendChild(S.page("FleetView — the trucks, right now",
+    "Every position on this floor is the last GPS ping from the branded technician app on that tech's phone. " +
+    "There is no box to install in a van. Street tiles and optional vehicle-level telemetry are wired at purchase.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+
+  var STATUS_COLOR = {
+    "On site":"#2f8f6b", "En route":"#e4832b", "Assigned":"#2f7d8c",
+    "Rolling · unassigned":"#e4a62b", "Between jobs":"#8391a0",
+    "Idle · no job today":"#8391a0", "No recent ping":"#b4485e"
+  };
+  function colorFor(st){ return STATUS_COLOR[st] || "#8391a0"; }
+
+  /* ---- the map: real lat/lng, projected. No street tiles, and we say so. ---- */
+  function buildMap(states){
+    var shop = S.db().shop;
+    var pts = [];
+    states.forEach(function(f){ if(f.truck.ping) pts.push({lat:f.truck.ping.lat,lng:f.truck.ping.lng}); });
+    pts.push({lat:shop.lat,lng:shop.lng});
+    var day = S.iso(S.TODAY);
+    var sites = S.db().jobs.filter(function(j){ return j.date===day; }).map(function(j){
+      var c = S.customerById(j.customerId); return c && c.lat!==undefined ? {lat:c.lat,lng:c.lng,name:c.name,job:j} : null;
+    }).filter(Boolean);
+    sites.forEach(function(p){ pts.push(p); });
+
+    var W=1000, H=520, PAD=54;
+    var lats=pts.map(function(p){return p.lat;}), lngs=pts.map(function(p){return p.lng;});
+    var minLat=Math.min.apply(null,lats), maxLat=Math.max.apply(null,lats);
+    var minLng=Math.min.apply(null,lngs), maxLng=Math.max.apply(null,lngs);
+    var padLat=(maxLat-minLat)*0.18 || 0.01, padLng=(maxLng-minLng)*0.12 || 0.01;
+    minLat-=padLat; maxLat+=padLat; minLng-=padLng; maxLng+=padLng;
+    function X(lng){ return PAD + (lng-minLng)/(maxLng-minLng) * (W-PAD*2); }
+    function Y(lat){ return PAD + (maxLat-lat)/(maxLat-minLat) * (H-PAD*2); }
+
+    var g = [];
+    /* graph paper, so it reads as a plot and never pretends to be a street map */
+    for(var gx=0; gx<=10; gx++){ var x=PAD+(gx/10)*(W-PAD*2);
+      g.push('<line x1="'+x+'" y1="'+PAD+'" x2="'+x+'" y2="'+(H-PAD)+'" stroke="#dbe2e8" stroke-width="1"/>'); }
+    for(var gy=0; gy<=6; gy++){ var y=PAD+(gy/6)*(H-PAD*2);
+      g.push('<line x1="'+PAD+'" y1="'+y+'" x2="'+(W-PAD)+'" y2="'+y+'" stroke="#dbe2e8" stroke-width="1"/>'); }
+
+    /* today's job sites */
+    sites.forEach(function(p){
+      g.push('<circle cx="'+X(p.lng).toFixed(1)+'" cy="'+Y(p.lat).toFixed(1)+'" r="5" fill="#ffffff" stroke="#8391a0" stroke-width="2"/>');
+    });
+
+    /* the shop */
+    g.push('<rect x="'+(X(shop.lng)-7).toFixed(1)+'" y="'+(Y(shop.lat)-7).toFixed(1)+'" width="14" height="14" rx="3" fill="#232b33"/>');
+    g.push('<text x="'+X(shop.lng).toFixed(1)+'" y="'+(Y(shop.lat)-14).toFixed(1)+'" text-anchor="middle" font-size="13" font-weight="600" fill="#232b33">The shop</text>');
+
+    /* a dotted run from each moving truck to the job it is heading for */
+    states.forEach(function(f){
+      if(!f.truck.ping || !f.job) return;
+      var c = S.customerById(f.job.customerId); if(!c || c.lat===undefined) return;
+      if(f.status!=="En route") return;
+      g.push('<line x1="'+X(f.truck.ping.lng).toFixed(1)+'" y1="'+Y(f.truck.ping.lat).toFixed(1)+
+             '" x2="'+X(c.lng).toFixed(1)+'" y2="'+Y(c.lat).toFixed(1)+
+             '" stroke="'+colorFor(f.status)+'" stroke-width="2" stroke-dasharray="5 5" opacity=".75"/>');
+    });
+
+    /* the trucks — labels get nudged clear of each other so a busy corner
+       of town is still readable instead of a pile of overlapping names */
+    var placed=[];
+    function freeY(x,y){
+      var yy=y, guard=0;
+      while(guard++ < 12 && placed.some(function(p){ return Math.abs(p.x-x)<62 && Math.abs(p.y-yy)<13; })) yy+=14;
+      placed.push({x:x,y:yy}); return yy;
+    }
+    states.forEach(function(f){
+      if(!f.truck.ping) return;
+      var x=X(f.truck.ping.lng), y=Y(f.truck.ping.lat), col=colorFor(f.status);
+      g.push('<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="10" fill="'+col+'" stroke="#ffffff" stroke-width="3"/>');
+      g.push('<text x="'+x.toFixed(1)+'" y="'+(y+4).toFixed(1)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">'+
+             S.esc(String(f.truck.label).replace(/[^0-9]/g,""))+'</text>');
+      var ly=freeY(x,y+26);
+      if(ly>y+27) g.push('<line x1="'+x.toFixed(1)+'" y1="'+(y+11).toFixed(1)+'" x2="'+x.toFixed(1)+'" y2="'+(ly-9).toFixed(1)+
+                         '" stroke="#b9c4cd" stroke-width="1"/>');
+      g.push('<text x="'+x.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="middle" font-size="12" fill="#4a5763">'+
+             S.esc((f.tech&&f.tech.name||"").split(" ")[0])+'</text>');
+    });
+
+    return '<div class="fmapwrap"><svg class="fmap" viewBox="0 0 '+W+' '+H+'" role="img" ' +
+      'aria-label="Plot of truck positions across the service area"><rect width="'+W+'" height="'+H+'" fill="#e9edf1"/>'+
+      g.join("")+'</svg></div>'+
+      '<div class="flegend">'+
+        '<span><i class="fdot" style="background:#2f8f6b"></i>On site</span>'+
+        '<span><i class="fdot" style="background:#e4832b"></i>En route</span>'+
+        '<span><i class="fdot" style="background:#2f7d8c"></i>Assigned</span>'+
+        '<span><i class="fdot" style="background:#e4a62b"></i>Rolling, unassigned</span>'+
+        '<span><i class="fdot" style="background:#8391a0"></i>Idle</span>'+
+        '<span><i class="fdot" style="background:#b4485e"></i>No recent ping</span>'+
+        '<span><i class="fdot" style="background:#fff;border-color:#8391a0"></i>Today’s job sites</span>'+
+      '</div>';
+  }
+
+  function render(){
+    host.innerHTML="";
+    var states = S.fleetState();
+    var rolling = states.filter(function(f){ return f.status==="En route" || f.status==="Rolling · unassigned"; }).length;
+    var onsite  = states.filter(function(f){ return f.status==="On site"; }).length;
+    var idle    = states.filter(function(f){ return f.status.indexOf("Idle")===0; }).length;
+    var stale   = states.filter(function(f){ return f.status==="No recent ping"; }).length;
+    var due     = S.serviceDue().filter(function(x){ return x.level!=="good"; });
+    var lowbat  = states.filter(function(f){ return f.lowBattery; });
+
+    host.appendChild(S.card('<div class="stats">'+
+      S.stat("Trucks on the road", rolling, "Moving on the last ping", rolling?"good":"")+
+      S.stat("On site", onsite, "Clocked in at a job", "good")+
+      S.stat("Idle", idle, idle?"No job on today's board":"Everyone has work", idle?"watch":"good")+
+      S.stat("Service due", due.length, due.length?"Past or near the interval":"Every truck inside its interval", due.length?"watch":"good")+
+      S.stat("Stale / low battery", stale+lowbat.length, "A dead phone is a blind truck", (stale+lowbat.length)?"watch":"good")+
+      '</div>'));
+
+    host.appendChild(S.card('<h2>The board, on a map</h2>'+
+      '<p class="sub">Positions plotted from each phone’s last GPS ping at '+S.esc(S.FLEET_CLOCK)+
+      '. Street tiles are added when your account is wired at purchase — this plot plots real coordinates, it does not draw roads.</p>'+
+      buildMap(states)));
+
+    host.appendChild(S.card('<h2>Every truck</h2>'+
+      '<p class="sub">One tap sends the customer an on-my-way link with the tech’s name and a live ETA. No app for them to download, no account to make.</p>'+
+      states.map(function(f){
+        var v=f.truck, t=f.tech, cust=f.job?S.customerById(f.job.customerId):null;
+        var bat=v.ping&&v.ping.battery!==undefined?v.ping.battery:null;
+        var omw=f.job&&f.job.omw?f.job.omw:null;
+        return '<div class="trow">'+
+          '<div class="tid"><b>'+S.esc(v.label)+'</b> <span class="tag" style="background:'+colorFor(f.status)+
+            ';color:#fff;border-color:transparent;">'+S.esc(f.status)+'</span>'+
+            '<div class="muted small">'+S.esc(t?t.name:"Unassigned")+(t?' · '+S.esc(t.trade):'')+'</div>'+
+            '<div class="mono muted small">'+S.esc(v.unit)+' · '+S.esc(v.plate)+'</div></div>'+
+          '<div class="tmeta">'+
+            (f.job
+              ? '<b>'+S.esc(f.job.task)+'</b><br>'+S.esc(cust?cust.name:"")+
+                (f.eta?' · <span class="mono">'+f.eta.miles+' mi · '+f.eta.minutes+' min out</span>':'')
+              : '<span class="muted">Nothing assigned on today’s board.</span>')+
+            '<div class="muted small" style="margin-top:4px;">Last ping '+(f.ageMin===null?'—':f.ageMin+' min ago')+
+            ' · <span class="batt'+(f.lowBattery?' low':'')+'">'+(bat===null?'—':bat+'%')+'</span></div>'+
+          '</div>'+
+          '<div class="tbtns">'+
+            (f.job
+              ? '<button class="btn btn-acc" data-omw="'+f.job.id+'">'+(omw?'Re-send on-my-way':'Send on-my-way')+'</button>'
+              : '<button class="btn ghost" disabled title="Assign a job on the dispatch board first">Send on-my-way</button>')+
+            (f.job?'<a class="btn ghost" href="dispatch.html">Open on the board</a>':'')+
+          '</div>'+
+          (omw ? '<div class="omwbox" style="flex-basis:100%;">Sent '+S.esc(omw.sentAt)+
+                 (omw.etaMin!==null?' — ETA about '+omw.etaMin+' min':'')+
+                 '. The customer’s link: <a href="omw.html?t='+S.esc(omw.token)+'">omw.html?t='+S.esc(omw.token)+'</a></div>' : '')+
+        '</div>';
+      }).join("")));
+
+    host.appendChild(S.card('<h2>Maintenance, before it strands somebody</h2>'+
+      '<p class="sub">Odometer against each truck’s own service interval. A truck past its interval is a second trip waiting to happen.</p>'+
+      '<div class="tablewrap"><table><thead><tr><th>Truck</th><th>Vehicle</th><th class="right">Odometer</th>'+
+      '<th class="right">Since service</th><th class="right">Interval</th><th>Status</th></tr></thead><tbody>'+
+      S.serviceDue().map(function(x){
+        return '<tr><td><b>'+S.esc(x.truck.label)+'</b><div class="mono muted small">'+S.esc(x.truck.plate)+'</div></td>'+
+          '<td class="small">'+S.esc(x.truck.unit)+'<div class="muted small">Last service '+S.esc(x.truck.lastServiceOn)+'</div></td>'+
+          '<td class="right mono">'+x.truck.odo.toLocaleString()+'</td>'+
+          '<td class="right mono">'+x.since.toLocaleString()+'</td>'+
+          '<td class="right mono">'+x.every.toLocaleString()+'</td>'+
+          '<td>'+(x.level==="bad"?S.tag(Math.abs(x.left).toLocaleString()+" mi over","bad")
+                 :x.level==="watch"?S.tag(x.left.toLocaleString()+" mi to go","watch")
+                 :S.tag(x.left.toLocaleString()+" mi to go","good"))+'</td></tr>';
+      }).join("")+'</tbody></table></div>'));
+
+    /* timesheet stamps — the same arrive/leave that proof of service already records */
+    var techs=S.db().techs.filter(function(t){ return S.stampsFor(t.id).length; });
+    var exc=S.stampExceptions();
+    host.appendChild(S.card('<h2>The timesheet writes itself</h2>'+
+      '<p class="sub">These are the arrive and leave stamps proof of service already captures, totalled per tech for the week. ' +
+      'Nobody keys hours into a second app, and payroll reconciles against the jobs that actually happened.</p>'+
+      (techs.length
+        ? '<div class="tablewrap"><table><thead><tr><th>Tech</th><th class="right">Stamped visits</th>'+
+          '<th class="right">Hours from stamps</th><th>Detail</th></tr></thead><tbody>'+
+          techs.map(function(t){
+            var ss=S.stampsFor(t.id);
+            var open=ss.filter(function(s){ return s.minutes===null; }).length;
+            var hrs=S.stampHours(t.id);
+            return '<tr><td><b>'+S.esc(t.name)+'</b><div class="muted small">'+S.esc(t.trade)+'</div></td>'+
+              '<td class="right mono">'+ss.length+'</td>'+
+              '<td class="right mono">'+(hrs>0?hrs.toFixed(2):(open?'—':'0.00'))+
+                (open?'<div class="muted small">'+open+' visit'+(open>1?'s':'')+' still open</div>':'')+'</td>'+
+              '<td class="small">'+ss.map(function(s){
+                  return '<span class="mono">'+S.esc(s.date)+' '+S.esc(s.inAt)+'→'+S.esc(s.outAt||"…")+'</span>'+
+                         (s.geo?'':' <span class="tag bad">off geofence</span>'); }).join("<br>")+
+              '</td></tr>';
+          }).join("")+'</tbody></table></div>'
+        : '<p class="muted">No stamped visits in this week yet.</p>')+
+      (exc.length
+        ? '<div class="note warn" style="margin-top:12px;"><b>'+exc.length+' stamp'+(exc.length>1?'s':'')+' need a look</b><br>'+
+          exc.map(function(e){ return S.esc(e.tech.name)+' — '+S.esc(e.why)+' ('+S.esc(e.stamp.date)+' '+S.esc(e.stamp.inAt)+')'; }).join("<br>")+'</div>'
+        : '<div class="note good" style="margin-top:12px;">Every stamp this week landed inside its job geofence.</div>')));
+
+    host.appendChild(S.card('<h2>What ships standard, and what is wired at purchase</h2>'+
+      '<p class="sub"><b>Standard, in this room:</b> phone-GPS positions off the branded technician app, on-my-way links, ' +
+      'arrive/leave geofence stamps and maintenance intervals. There is no hardware to buy and no per-truck subscription.</p>'+
+      '<p class="sub"><b>Wired at purchase:</b> street map tiles for this floor, and — only if you want vehicle-level telemetry ' +
+      '(engine hours, harsh braking, idling) — an in-vehicle device per truck. <b>Vehicle telemetry, from '+S.money(1200)+' plus hardware.</b> ' +
+      'Most shops never need it; the phone in the tech’s pocket is already in the truck.</p>'+
+      '<p class="sub muted small">This floor runs on a simulated sample fleet at a pinned sample clock. No position here belongs to a real vehicle or a real person.</p>'));
+
+    host.querySelectorAll("[data-omw]").forEach(function(b){ b.onclick=function(){
+      S.sendOnMyWay(b.dataset.omw);
+      S.toast("On-my-way sent — the customer has a live ETA.","ok"); render(); }; });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

@@ -49,7 +49,9 @@
         return '<tr><td><b>'+S.esc(S.techName(j.techId))+'</b></td><td>'+S.esc(c?c.name:"")+
           '<div class="muted small">'+S.esc(c?c.addr:"")+'</div></td>'+
           '<td class="mono">'+S.hhmm(j.start)+' '+S.tag("in geofence","good")+'</td><td class="mono">'+S.hhmm(j.end)+'</td>'+
-          '<td class="right"><button class="btn" data-out="'+j.id+'">Close the job</button></td></tr>'; }).join("")+
+          '<td class="right">'+(function(){ var g=S.canClose(j.id);
+            return (g.ok?'':'<span class="tag bad" style="margin-right:8px;">'+g.blockers.length+' checkpoint'+(g.blockers.length>1?'s':'')+' open</span>')+
+              '<button class="btn" data-out="'+j.id+'">Close the job</button>'; })()+'</td></tr>'; }).join("")+
       '</tbody></table></div>':'<p class="muted">Nobody is on site at this moment.</p>')));
   
     if(due.length){
@@ -103,6 +105,11 @@
         return '<label class="chk"><input type="checkbox" value="'+S.esc(t)+'"'+(t===j.task?" checked":"")+'> '+S.esc(t)+'</label>'; }).join("")+'</div>'+
       '<label class="fld" style="margin-top:14px"><span>Notes for the customer and the file</span><textarea id="nt" rows="3"></textarea></label>'+
       '<label class="chk"><input type="checkbox" id="sig" checked> Customer signed on the tech\'s phone</label>'+
+      (function(){ var g=S.canClose(jobId);
+         return g.ok ? '<div class="note good"><b>Checkpoints clear.</b> Everything this job has to prove is documented.</div>'
+                     : '<div class="note warn"><b>Checkpoints are not clear.</b> This job will not close until these are done:<br>'+
+                       g.blockers.map(function(x){ return '· '+S.esc(x); }).join('<br>')+
+                       '<br><a href="checkpoints.html">Open Checkpoints</a></div>'; })()+
       '<div id="err" class="note warn" style="display:none"></div>'+
       '<div class="rowbtns"><button class="btn" id="save">Close the job</button><button class="btn ghost" id="cx">Cancel</button></div></div>';
     document.body.appendChild(w);
@@ -116,7 +123,13 @@
           e.scrollIntoView({behavior:"smooth",block:"center"}); return; }
         S.setPermit(jobId,pno);
       }
-      S.depart(jobId,picked,null,w.querySelector("#nt").value,w.querySelector("#sig").checked);
+      var res=S.depart(jobId,picked,null,w.querySelector("#nt").value,w.querySelector("#sig").checked);
+      if(res && res.ok===false){
+        var e2=w.querySelector("#err"); e2.style.display="block";
+        e2.innerHTML="<b>Held by Checkpoints.</b> This job cannot close until these are documented:<br>"+
+          res.blockers.map(function(x){ return "· "+S.esc(x); }).join("<br>")+
+          '<br><a href="checkpoints.html">Open Checkpoints</a>';
+        e2.scrollIntoView({behavior:"smooth",block:"center"}); return; }
       w.remove(); S.toast("Job closed and documented.","ok"); render();
     });
   }

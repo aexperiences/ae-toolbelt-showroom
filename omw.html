@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Your technician is on the way · Toolbelt OS</title>
+<meta name="description" content="Who is coming, when they will arrive, and what they are coming for — a link the customer opens, with no app and no account.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/omw.html">
+<meta property="og:title" content="On the way · Toolbelt OS">
+<meta property="og:description" content="Who is coming, when they arrive, and what for. No app, no account.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+<style>
+  body{background:#16110c;}
+  .owrap{max-width:640px;margin:0 auto;padding:22px 16px 60px;}
+  .ownerbar{background:#241a10;border:1px solid #3a2c1c;line-height:1.5;
+    border-radius:12px;padding:10px 14px;margin-bottom:18px;font-size:13px;color:#a8927a;}
+  .ownerbar a{color:#e4832b;text-decoration:none;font-weight:600;}
+  .ohead{display:flex;gap:14px;align-items:center;margin:6px 0 4px;}
+  .ohead img{width:52px;height:52px;border-radius:12px;}
+  .ohead h1{margin:0;font-size:24px;color:#f3e7d4;}
+  .ohead .sub{font-size:13px;color:#a8927a;}
+  .ocard{background:#241a10;border:1px solid #3a2c1c;border-radius:14px;padding:18px;margin-top:14px;}
+  .ocard h2{margin:0 0 10px;font-size:17px;color:#f3e7d4;}
+  .who{display:flex;gap:14px;align-items:center;}
+  .avatar{width:64px;height:64px;border-radius:50%;background:#e4832b;color:#1d130a;display:flex;
+    align-items:center;justify-content:center;font-size:23px;font-weight:800;flex:0 0 auto;letter-spacing:.5px;}
+  .wname{font-size:20px;font-weight:700;color:#f3e7d4;}
+  .wsub{font-size:13px;color:#a8927a;}
+  .eta{display:flex;gap:10px;align-items:baseline;margin-top:14px;}
+  .etanum{font-size:44px;font-weight:800;color:#e4832b;line-height:1;font-family:"IBM Plex Mono",monospace;}
+  .etalbl{font-size:14px;color:#a8927a;}
+  .track{height:8px;border-radius:6px;background:#1b140d;border:1px solid #3a2c1c;margin:16px 0 8px;overflow:hidden;}
+  .trackfill{height:100%;background:linear-gradient(90deg,#e4832b,#e4a62b);}
+  .steps{display:flex;justify-content:space-between;font-size:11px;color:#7d6a55;letter-spacing:.4px;}
+  .steps b{color:#f3e7d4;font-weight:600;}
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid #3a2c1c;font-size:14px;}
+  .kv:first-of-type{border-top:0;}
+  .kv span{color:#a8927a;}
+  .kv b{color:#f3e7d4;font-weight:600;text-align:right;}
+  .callbtn{display:block;text-align:center;text-decoration:none;border-radius:12px;padding:14px;
+    font-size:16px;font-weight:700;background:#e4832b;color:#1d130a;margin-top:14px;}
+  .credit{margin-top:26px;color:#7d6a55;font-size:12px;text-align:center;}
+  .credit b{color:#a8927a;}
+  .miss{color:#f3e7d4;}
+</style>
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<div class="owrap" id="ow"></div>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var shop = S.db().shop;
+  var tok = (location.search.match(/[?&]t=([^&]+)/)||[])[1] || "";
+  var job = tok ? S.jobByOmw(decodeURIComponent(tok)) : null;
+  var host = document.getElementById("ow");
+
+  function head(){
+    return '<div class="ownerbar">CUSTOMER VIEW — this is the page your customer opens from the text. ' +
+      'It runs <b>under your brand</b>, with no app to download and no account to make. ' +
+      '<a href="fleetview.html">← Back to FleetView</a></div>' +
+      '<div class="ohead"><img src="https://www.aexperiences.com/Toolbelt_OS.png" alt="">' +
+      '<div><h1>' + S.esc(shop.name) + '</h1>' +
+      '<div class="sub">' + S.esc(shop.city) + ', ' + S.esc(shop.state) + ' · ' + S.esc(shop.phone) + '</div></div></div>';
+  }
+  function credit(){
+    return '<div class="credit">Powered by <b>Accelerated Experiences LLC</b> · Sample job on a demonstration floor — ' +
+      'no real customer, technician or vehicle appears on this page.</div>';
+  }
+
+  if(!job){
+    host.innerHTML = head() +
+      '<div class="ocard"><h2>Nothing to track on this link</h2>' +
+      '<p class="miss">This on-my-way link has expired or was never issued. Links are created the moment a ' +
+      'dispatcher or technician taps <b>Send on-my-way</b>, and they only ever show one visit.</p>' +
+      '<a class="callbtn" href="fleetview.html">Open FleetView and send one</a></div>' + credit();
+    return;
+  }
+
+  var tech = S.techById(job.techId);
+  var cust = S.customerById(job.customerId);
+  var eta  = S.etaFor(job.id);
+  var omw  = job.omw || {};
+  var mins = (eta && eta.minutes !== null) ? eta.minutes : omw.etaMin;
+  var onSite = job.status === "On site";
+  var initials = (tech ? tech.name : "?").split(" ").map(function(x){return x[0];}).join("").slice(0,2).toUpperCase();
+
+  /* the tracker is honest: three states, nothing invented in between */
+  var pct = onSite ? 100 : (mins === null || mins === undefined ? 33 : Math.max(20, Math.min(92, 100 - mins*3)));
+
+  host.innerHTML = head() +
+    '<div class="ocard">' +
+      '<h2>' + (onSite ? 'Your technician has arrived' : 'Your technician is on the way') + '</h2>' +
+      '<div class="who"><div class="avatar">' + S.esc(initials) + '</div>' +
+        '<div><div class="wname">' + S.esc(tech ? tech.name : "Your technician") + '</div>' +
+        '<div class="wsub">' + S.esc(tech ? tech.trade + " · " + shop.name : shop.name) +
+        (tech && tech.rating ? ' · ' + tech.rating.toFixed(1) + '★' : '') + '</div></div></div>' +
+      (onSite
+        ? '<div class="eta"><div class="etanum">Here</div><div class="etalbl">on site now</div></div>'
+        : '<div class="eta"><div class="etanum">' + (mins === null || mins === undefined ? '—' : mins) +
+          '</div><div class="etalbl">minutes away' + (eta ? ' · ' + eta.miles + ' mi out' : '') + '</div></div>') +
+      '<div class="track"><div class="trackfill" style="width:' + pct + '%"></div></div>' +
+      '<div class="steps"><b>Dispatched</b><span>' + (onSite ? 'On the way' : '<b>On the way</b>') + '</span>' +
+        (onSite ? '<b>Arrived</b>' : '<span>Arrived</span>') + '</div>' +
+    '</div>' +
+
+    '<div class="ocard"><h2>What they are coming for</h2>' +
+      '<div class="kv"><span>Visit</span><b>' + S.esc(job.task) + '</b></div>' +
+      '<div class="kv"><span>Trade</span><b>' + S.esc(job.trade) + '</b></div>' +
+      '<div class="kv"><span>Window</span><b>' + S.esc(S.hhmm ? job.start : job.start) + ' – ' + S.esc(job.end) + '</b></div>' +
+      (cust ? '<div class="kv"><span>Address</span><b>' + S.esc(cust.addr) + ', ' + S.esc(cust.city) + '</b></div>' : '') +
+      (omw.sentAt ? '<div class="kv"><span>Sent</span><b>' + S.esc(omw.sentAt) + '</b></div>' : '') +
+    '</div>' +
+
+    '<a class="callbtn" href="tel:' + S.esc(String(shop.phone).replace(/[^0-9+]/g,"")) + '">Call the shop · ' + S.esc(shop.phone) + '</a>' +
+    credit();
+})();
+</script>
+</body>
+</html>

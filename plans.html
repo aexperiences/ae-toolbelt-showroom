@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Service Plans · Toolbelt OS</title>
+<meta name="description" content="Maintenance agreements that schedule their own visits, price the member's repairs, sit on their own ledger line, and get chased for renewal by the department instead of by the owner.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/plans.html">
+<meta property="og:title" content="Service Plans · Toolbelt OS">
+<meta property="og:description" content="Memberships that renew themselves — visits on the board, member pricing in the book, revenue on its own line.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+<style>
+  .plangrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;}
+  .plancard{border:1px solid var(--line);border-radius:var(--r);padding:16px;background:var(--card);}
+  .plancard h3{margin:0 0 2px;font-size:17px;}
+  .planprice{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--ink);margin:6px 0 2px;}
+  .planperk{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--ink-2);padding:4px 0;}
+  .planperk i{color:var(--good);font-style:normal;flex:0 0 auto;}
+  .mrow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:12px 0;border-top:1px solid var(--line-2);}
+  .mrow:first-of-type{border-top:0;}
+  .mname{min-width:190px;flex:1;}
+  .mmeta{min-width:200px;flex:1.1;font-size:13px;color:var(--ink-2);}
+  .mbtns{display:flex;gap:8px;flex-wrap:wrap;}
+  .mmoney{min-width:110px;text-align:right;font-family:var(--mono);}
+  .mren{min-width:132px;}
+</style>
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"plans.html", crumb:"Service Plans" });
+  content.appendChild(S.page("Service Plans — agreements that renew themselves",
+    "The visits schedule onto the board from the plan, the member's discount is applied in the pricebook instead of remembered, " +
+    "plan revenue sits on its own ledger line, and the department chases the renewals. Nothing sends without your say-so.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+
+  function render(){
+    host.innerHTML="";
+    var rev=S.planRevenue(), due=S.planVisitsDue(), ren=S.renewalsDue(), risk=S.renewalsAtRisk();
+
+    host.appendChild(S.card('<div class="stats">'+
+      S.stat("Active members", rev.active, "On a live agreement","good")+
+      S.stat("Plan revenue / yr", S.money(rev.annual), "Its own line, not blended into service","good")+
+      S.stat("That is / mo", S.money(rev.mrr), "Recurring, before a single repair","")+
+      S.stat("Renewals inside "+S.PLAN_DUE_DAYS+"d", ren.length, ren.length?"Nudges draft to the desk":"Nothing near", ren.length?"watch":"good")+
+      S.stat("At risk", risk.length, risk.length?"Auto-renew is OFF on these":"Every one renews itself", risk.length?"bad":"good")+
+      '</div>'));
+
+    host.appendChild(S.card('<h2>What you sell</h2>'+
+      '<p class="sub">Three shapes, and the commercial one is quoted per site because a restaurant and a dental office are not the same building.</p>'+
+      '<div class="plangrid">'+S.plans().map(function(p){
+        var mine=S.memberships().filter(function(m){ return m.planId===p.id && m.status==="Active"; });
+        return '<div class="plancard"><h3>'+S.esc(p.name)+'</h3>'+
+          '<div class="muted small">'+S.esc(p.kind)+'</div>'+
+          '<div class="planprice">'+(p.annual?S.money(p.annual)+' <span class="muted small" style="font-size:12px;">/ yr</span>':'Quoted per site')+'</div>'+
+          '<div class="muted small">'+(p.visitsYr?p.visitsYr+' visits a year':'Visit schedule set per site')+' · '+p.discount+'% member pricing</div>'+
+          '<div style="margin:10px 0 8px;">'+p.perks.map(function(k){
+            return '<div class="planperk"><i>✓</i><span>'+S.esc(k)+'</span></div>'; }).join("")+'</div>'+
+          '<div>'+S.tag(mine.length+" on this plan", mine.length?"good":"")+'</div>'+
+        '</div>';
+      }).join("")+'</div>'));
+
+    host.appendChild(S.card('<h2>The members</h2>'+
+      '<p class="sub">Every agreement knows what is left on it this year and when it renews. Scheduling a visit puts a real job on the board.</p>'+
+      S.memberships().map(function(m){
+        var c=S.customerById(m.customerId), p=S.planById(m.planId), left=S.visitsLeft(m), d=S.daysUntil(m.renewsOn);
+        return '<div class="mrow">'+
+          '<div class="mname"><b>'+S.esc(c?c.name:"")+'</b>'+
+            '<div class="muted small">'+S.esc(p?p.name:"")+' · since '+S.esc(m.since)+' · '+S.esc(m.billing)+'</div></div>'+
+          '<div class="mmeta">'+
+            (left===null?'Visit schedule set per site':'<b>'+left+'</b> of '+m.visitsYr+' visits left this year')+
+            '<div class="muted small">Last visit '+S.esc(m.lastVisit||"—")+' · renews '+S.esc(m.renewsOn)+
+            (d!==null?' ('+d+' days)':'')+'</div></div>'+
+          '<div class="mmoney">'+S.money(m.annual)+'<span class="muted small"> / yr</span></div>'+
+          '<div class="mren">'+(m.autoRenew?S.tag("auto-renews","good"):S.tag("auto-renew OFF","bad"))+'</div>'+
+          '<div class="mbtns">'+
+            (left===null||left>0?'<button class="btn btn-acc" data-sched="'+m.id+'">Schedule a visit</button>':'')+
+            '<button class="btn ghost" data-nudge="'+m.id+'">Draft renewal nudge</button>'+
+            '<button class="btn ghost" data-auto="'+m.id+'|'+(m.autoRenew?'0':'1')+'">'+(m.autoRenew?'Turn auto-renew off':'Turn auto-renew on')+'</button>'+
+          '</div></div>';
+      }).join("")));
+
+    if(due.length){
+      host.appendChild(S.card('<h2>Visits owed on an agreement</h2>'+
+        '<p class="sub">These are visits the shop has already been paid for. An unscheduled plan visit is the quietest way to lose a renewal.</p>'+
+        '<div class="tablewrap"><table><thead><tr><th>Member</th><th>Plan</th><th class="right">Visits left</th>'+
+        '<th>Last visit</th><th class="right"></th></tr></thead><tbody>'+
+        due.map(function(v){
+          return '<tr><td><b>'+S.esc(v.customer?v.customer.name:"")+'</b></td>'+
+            '<td>'+S.esc(v.plan?v.plan.name:"")+'</td>'+
+            '<td class="right mono">'+(v.left===null?"—":v.left)+'</td>'+
+            '<td class="mono small">'+S.esc(v.lastVisit||"—")+'</td>'+
+            '<td class="right"><button class="btn sm" data-sched="'+v.membership.id+'">Put it on the board</button></td></tr>';
+        }).join("")+'</tbody></table></div>'));
+    }
+
+    host.appendChild(S.card('<h2>Renewals — the department chases these, you approve them</h2>'+
+      '<p class="sub">A drafted nudge lands on the Approval Desk with what it is worth and why. It does not go out until you say so.</p>'+
+      (ren.length
+        ? '<div class="tablewrap"><table><thead><tr><th>Member</th><th>Plan</th><th class="right">Worth / yr</th>'+
+          '<th class="right">Renews in</th><th>Renewal</th><th class="right"></th></tr></thead><tbody>'+
+          ren.map(function(r){
+            return '<tr><td><b>'+S.esc(r.customer?r.customer.name:"")+'</b></td>'+
+              '<td>'+S.esc(r.plan?r.plan.name:"")+'</td>'+
+              '<td class="right mono">'+S.money(r.membership.annual)+'</td>'+
+              '<td class="right mono">'+r.days+' d</td>'+
+              '<td>'+(r.membership.autoRenew?S.tag("auto","good"):S.tag("needs a call","bad"))+'</td>'+
+              '<td class="right"><button class="btn sm" data-nudge="'+r.membership.id+'">Draft the nudge</button></td></tr>';
+          }).join("")+'</tbody></table></div>'
+        : '<p class="muted">Nothing renewing inside the window.</p>')+
+      (risk.length
+        ? '<div class="note warn" style="margin-top:12px;"><b>'+risk.length+' agreement'+(risk.length>1?'s':'')+' will not renew on '+(risk.length>1?'their':'its')+' own.</b><br>'+
+          risk.map(function(r){ return S.esc(r.customer?r.customer.name:"")+' — '+S.money(r.membership.annual)+'/yr, '+r.days+' days out'; }).join("<br>")+
+          '</div>'
+        : '')));
+
+    host.appendChild(S.card('<h2>Member pricing is in the book, not in somebody’s head</h2>'+
+      '<p class="sub">A member’s discount is applied where the price is computed, so it lands the same whether the quote comes from the office, the truck or the web booking page.</p>'+
+      '<div class="tablewrap"><table><thead><tr><th>Member</th><th>Plan</th><th class="right">Discount</th>'+
+      '<th class="right">A $600 repair</th><th class="right">They save</th></tr></thead><tbody>'+
+      S.memberships().map(function(m){
+        var c=S.customerById(m.customerId), d=S.memberDiscount(m.customerId), p=S.memberPrice(600,m.customerId);
+        return '<tr><td>'+S.esc(c?c.name:"")+'</td><td>'+S.esc((S.planById(m.planId)||{}).name||"")+'</td>'+
+          '<td class="right mono">'+d+'%</td><td class="right mono">'+S.money(p)+'</td>'+
+          '<td class="right mono">'+S.money(600-p)+'</td></tr>';
+      }).join("")+'</tbody></table></div>'));
+
+    host.appendChild(S.card('<h2>Native — there is nothing to wire</h2>'+
+      '<p class="sub">Service Plans is built into this system. No membership add-on, no separate subscription tool, no per-member fee. ' +
+      'The plan revenue above is computed from the agreements themselves and kept on its own line in Books so you can see what the ' +
+      'agreements are worth separately from service work.</p>'+
+      '<p class="sub muted small">Sample shop, sample agreements. Billing on this floor is a record, not a charge — your payment processor is wired at purchase.</p>'));
+
+    host.querySelectorAll("[data-sched]").forEach(function(b){ b.onclick=function(){
+      var id=S.schedulePlanVisit(b.dataset.sched);
+      S.toast(id?"Visit is on the board.":"Could not schedule that one.", id?"ok":"bad"); render(); }; });
+    host.querySelectorAll("[data-nudge]").forEach(function(b){ b.onclick=function(){
+      S.draftRenewalNudge(b.dataset.nudge);
+      S.toast("Nudge drafted — it is waiting on the Approval Desk.","ok"); render(); }; });
+    host.querySelectorAll("[data-auto]").forEach(function(b){ b.onclick=function(){
+      var p=b.dataset.auto.split("|"); S.setAutoRenew(p[0], p[1]==="1"); render(); }; });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

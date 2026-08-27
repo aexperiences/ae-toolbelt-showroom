@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checkpoints · Toolbelt OS</title>
+<meta name="description" content="Job-stage checklists with required photos. The items that carry proof are enforced by the system, not by a screen — a job does not close undocumented.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/checkpoints.html">
+<meta property="og:title" content="Checkpoints · Toolbelt OS">
+<meta property="og:description" content="Stage checklists with required photos. A job does not close undocumented.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+<style>
+  .cpjob{border:1px solid var(--line);border-radius:var(--r);padding:16px;margin:12px 0;background:var(--card);}
+  .cpjob.held{border-color:var(--watch);box-shadow:0 0 0 1px var(--watch-w) inset;}
+  .cpjob.clear{border-color:var(--good);}
+  .cphead{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;}
+  .cpstage{margin-top:14px;font-size:11px;letter-spacing:.9px;text-transform:uppercase;color:var(--mut);font-weight:700;}
+  .cpitem{display:flex;gap:11px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line-2);}
+  .cpitem:first-of-type{border-top:0;}
+  .cpbox{flex:0 0 auto;width:22px;height:22px;border-radius:6px;border:2px solid var(--line);background:#fff;
+         cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;line-height:1;}
+  .cpbox.on{background:var(--good);border-color:var(--good);}
+  .cplbl{flex:1;min-width:180px;font-size:14px;}
+  .cpreq{font-size:11px;letter-spacing:.6px;color:var(--bad);font-weight:700;}
+  .cpsrc{font-size:11px;color:var(--mut);}
+  .cpphoto{flex:0 0 auto;}
+  .cpbar{height:7px;border-radius:5px;background:var(--sunk);overflow:hidden;margin:10px 0 2px;}
+  .cpbarfill{height:100%;background:var(--good);}
+</style>
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"checkpoints.html", crumb:"Checkpoints" });
+  content.appendChild(S.page("Checkpoints — the job cannot close undocumented",
+    "Every job carries a short stage checklist. The items that carry proof are required, and the refusal is built into the " +
+    "system rather than into one screen — a job missing its before-photo will not close from the field app, from the office, or from anywhere else.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+
+  function jobLine(j){
+    var c=S.customerById(j.customerId);
+    return '<div><b>'+S.esc(j.task)+'</b> <span class="muted small">· '+S.esc(j.trade)+'</span>'+
+      '<div class="muted small">'+S.esc(c?c.name:"")+' · '+S.esc(S.techName(j.techId)||"Unassigned")+
+      ' · '+S.esc(j.date)+' '+S.esc(j.start)+'–'+S.esc(j.end)+'</div></div>';
+  }
+
+  function renderJob(st){
+    var j=st.job, pct=st.total?Math.round(st.done/st.total*100):0;
+    var byStage={};
+    st.rows.forEach(function(r){ (byStage[r.item.stage]=byStage[r.item.stage]||[]).push(r); });
+    var stages=S.CHECK_STAGES.filter(function(k){ return byStage[k]; }).map(function(k){
+      return '<div class="cpstage">'+S.esc(k)+'</div>'+
+        byStage[k].map(function(r){
+          return '<div class="cpitem">'+
+            '<div class="cpbox'+(r.satisfied?' on':'')+'" data-tick="'+j.id+'|'+r.item.k+'|'+(r.done?'0':'1')+'|'+(r.item.photo?'1':'0')+'">'+
+              (r.satisfied?'✓':'')+'</div>'+
+            '<div class="cplbl">'+S.esc(r.item.label)+
+              (r.item.required?' <span class="cpreq">REQUIRED</span>':'')+
+              (r.src==="record"?'<div class="cpsrc">Satisfied from the job record — '+(j.photos||0)+' photo(s) on file'+((j.proof&&j.proof.sig)?', signed':'')+'</div>':'')+
+            '</div>'+
+            (r.item.photo?'<div class="cpphoto">'+(r.photo?S.tag("photo attached","good"):S.tag("photo needed","watch"))+'</div>':'')+
+          '</div>';
+        }).join("");
+    }).join("");
+
+    return '<div class="cpjob '+(st.blocked?'held':'clear')+'">'+
+      '<div class="cphead">'+jobLine(j)+
+        '<div>'+(st.blocked
+          ? S.tag("HELD — "+st.missing.length+" required item"+(st.missing.length>1?"s":"")+" open","bad")
+          : S.tag("clear to close","good"))+'</div></div>'+
+      '<div class="cpbar"><div class="cpbarfill" style="width:'+pct+'%"></div></div>'+
+      '<div class="muted small">'+st.done+' of '+st.total+' done · '+st.requiredTotal+' required</div>'+
+      stages+
+      (st.blocked
+        ? '<div class="note warn" style="margin-top:12px;"><b>This job will not close yet.</b><br>'+
+          st.missing.map(function(r){ return '· '+S.esc(r.item.label)+(r.item.photo&&!r.photo?' — photo required':''); }).join('<br>')+
+          '</div>'
+        : '<div class="note good" style="margin-top:12px;">Everything required is documented. This job can be closed from the field app.</div>')+
+    '</div>';
+  }
+
+  function render(){
+    host.innerHTML="";
+    var st=S.checkStats();
+    host.appendChild(S.card('<div class="stats">'+
+      S.stat("Jobs under way", st.started, "Arrived, not yet closed","")+
+      S.stat("Clear to close", st.clear, "Every required item documented", st.clear?"good":"")+
+      S.stat("Held", st.blocked, st.blocked?"Missing proof, cannot close":"Nothing held", st.blocked?"watch":"good")+
+      S.stat("Photos outstanding", st.photosOutstanding, "Required photos not yet attached", st.photosOutstanding?"watch":"good")+
+      S.stat("Not started", st.notStarted, "No one has arrived — nothing to document yet","")+
+      '</div>'));
+
+    var live=S.db().jobs.filter(S.checkStarted).map(S.checkState);
+    host.appendChild(S.card('<h2>Jobs under way</h2>'+
+      '<p class="sub">Tick an item as the tech would from the truck. A required photo item needs the photo, not just the tick — ' +
+      'that is the difference between a checklist and a gate.</p>'+
+      (live.length ? live.map(renderJob).join("")
+                   : '<p class="muted">Nobody is on a job right now. Arrive at a job on the Field floor and its checklist opens here.</p>')));
+
+    var closed=S.db().jobs.filter(function(j){ return j.status==="Closed"; }).slice(-6).reverse().map(S.checkState);
+    host.appendChild(S.card('<h2>Recently closed — what the record already proves</h2>'+
+      '<p class="sub">Jobs closed before Checkpoints existed are not marked as failures. Their state is read from the record they ' +
+      'already left behind: photos on file and a captured signature. Nothing here was invented to make the number look better.</p>'+
+      '<div class="tablewrap"><table><thead><tr><th>Job</th><th>Customer</th><th class="right">Photos</th>'+
+      '<th>Signature</th><th class="right">Documented</th></tr></thead><tbody>'+
+      closed.map(function(s){
+        var j=s.job, c=S.customerById(j.customerId);
+        return '<tr><td><b>'+S.esc(j.task)+'</b><div class="muted small">'+S.esc(j.date)+' · '+S.esc(j.trade)+'</div></td>'+
+          '<td>'+S.esc(c?c.name:"")+'</td>'+
+          '<td class="right mono">'+(j.photos||0)+'</td>'+
+          '<td>'+((j.proof&&j.proof.sig)?S.tag("signed","good"):S.tag("not signed","bad"))+'</td>'+
+          '<td class="right mono">'+s.done+' / '+s.total+'</td></tr>';
+      }).join("")+'</tbody></table></div>'));
+
+    host.appendChild(S.card('<h2>Why the gate lives in the system</h2>'+
+      '<p class="sub">Permitted work here already cannot close without a permit number, and a lapsed licence already pulls a tech off ' +
+      'dispatch. Checkpoints is the same idea applied to proof: the refusal is enforced where the job is closed, so it holds whether the ' +
+      'close is attempted from the technician app, the office, or a script. A checklist that can be skipped is a suggestion.</p>'+
+      '<p class="sub muted small">Sample shop, sample jobs. Photo attachment on this floor is a tick, not an upload — the buyer’s build wires ' +
+      'the camera roll straight to the job record.</p>'));
+
+    host.querySelectorAll("[data-tick]").forEach(function(b){ b.onclick=function(){
+      var p=b.dataset.tick.split("|");
+      S.setCheckpoint(p[0], p[1], p[2]==="1", p[3]==="1");
+      render(); }; });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

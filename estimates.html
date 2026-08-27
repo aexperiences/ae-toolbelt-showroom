@@ -47,10 +47,38 @@
         (e.amount?'<table class="kv"><tbody><tr><th>Quoted</th><td class="mono">'+S.money(e.amount)+'</td></tr>'+
           '<tr><th>Our cost</th><td class="mono">'+S.money(e.cost)+'</td></tr>'+
           '<tr class="tot"><th>Margin</th><td class="mono"><b>'+S.money(e.amount-e.cost)+'</b> · '+S.pct(m,1)+'</td></tr></tbody></table>':'')+
+        (function(){
+          if(!S.financeEligible(e.amount)) return '';
+          var best=S.bestMonthly(e.amount);
+          return '<div class="note" style="margin-top:12px;border-color:var(--teal);background:var(--teal-wash);">'+
+            '<b>'+S.money(e.amount)+' — or about '+S.money(Math.round(best.monthly))+' a month.</b> '+
+            '<span class="muted small">'+best.months+' months at '+best.apr+'% APR.</span>'+
+            '<div class="tablewrap" style="margin-top:8px;"><table><thead><tr><th>Term</th><th class="right">APR</th>'+
+            '<th class="right">Monthly</th><th class="right"></th></tr></thead><tbody>'+
+            S.financeOffers(e.amount).map(function(o){
+              var on = e.finance && e.finance.months===o.months;
+              return '<tr><td class="mono">'+o.months+' mo</td><td class="right mono">'+o.apr+'%</td>'+
+                '<td class="right mono">'+S.money(o.monthly)+'</td>'+
+                '<td class="right">'+(on?S.tag("on this quote","good")
+                  :'<button class="btn sm ghost" data-fin="'+e.id+'|'+o.months+'">Put on the quote</button>')+'</td></tr>';
+            }).join("")+'</tbody></table></div>'+
+            '<div class="muted small" style="margin-top:8px;">The margin above does not move — the customer chooses how to pay, not what it costs you. '+
+            'Financing partner and underwriting are wired to your account at purchase; nothing on this floor approves anybody for credit.</div>'+
+          '</div>';
+        })()+
+        (S.isMember(e.customerId)?'<div class="note good" style="margin-top:10px;">'+
+          '<b>'+S.esc((S.customerById(e.customerId)||{}).name)+' is on '+S.esc((S.planById((S.membershipFor(e.customerId)||{}).planId)||{}).name)+'.</b> '+
+          'Member pricing of '+S.memberDiscount(e.customerId)+'% applies to repair work on this account.</div>':'')+
         '<div class="rowbtns"><label class="fld inline"><span>Stage</span><select data-s="'+e.id+'">'+
         S.ESTIMATE_STAGES.map(function(st){return '<option'+(st===e.stage?" selected":"")+'>'+S.esc(st)+'</option>';}).join("")+
         '</select></label><a class="btn ghost" href="sign.html">Send for approval</a></div>'));
     });
+    Array.prototype.forEach.call(host.querySelectorAll("[data-fin]"),function(b){
+      b.addEventListener("click",function(){
+        var p=b.getAttribute("data-fin").split("|");
+        var mo=S.requestFinancing(p[0], parseInt(p[1],10));
+        S.toast(mo?("Payment view added — about "+S.money(Math.round(mo))+" a month."):"Not eligible for a payment view.", mo?"ok":"bad");
+        render(); }); });
     Array.prototype.forEach.call(host.querySelectorAll("[data-s]"),function(sel){
       sel.addEventListener("change",function(){ S.moveEstimate(sel.getAttribute("data-s"),sel.value);
         S.toast("Moved to "+sel.value+".","ok"); render(); }); });
