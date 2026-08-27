@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Master List · Toolbelt OS</title>
+<meta name="description" content="The owner's private running list. Only the Owner and Admin seats can open it.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/masterlist.html">
+<meta property="og:title" content="Master List · Toolbelt OS">
+<meta property="og:description" content="The owner's private running list — priorities, notes, and the things nobody else needs to see.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+<style>
+  .mlrow{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line-2);}
+  .mlrow:first-of-type{border-top:0;}
+  .mlrow.done .mltext{text-decoration:line-through;color:var(--mut);}
+  .mlchk{width:22px;height:22px;border-radius:7px;border:2px solid var(--line);background:var(--card);
+         cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;}
+  .mlrow.done .mlchk{background:var(--good);border-color:var(--good);}
+  .mltext{flex:1;min-width:200px;}
+  .mltext .muted{display:block;font-size:11.5px;}
+  .mladd{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .mladd input[type=text]{flex:1;min-width:220px;}
+  .prisel{display:flex;gap:6px;}
+  .prib{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:13px;}
+  .prib.on{border-color:var(--tang);background:var(--tang-wash);}
+  .mldel{background:none;border:0;color:var(--mut);cursor:pointer;font-size:16px;padding:4px;}
+  .mldel:hover{color:var(--bad);}
+</style>
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"masterlist.html", crumb:"Master List" });
+  content.appendChild(S.page("Master List — the owner's private list",
+    "Your own running notes about the business. Only the Owner and Admin seats can open this room — " +
+    "techs and the front desk never see it.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+
+  var PRIS=["Now","Soon","Someday"];
+  function seed(){ return [
+    { id:"ml1", text:"Renew the contractor licence before 9/30", note:"State board — do not let this ride", pri:"Now",  done:false },
+    { id:"ml2", text:"Raise the diagnostic fee to $89 for fall", note:"Book price — check what the estimate win rate does", pri:"Soon", done:false },
+    { id:"ml3", text:"Talk to Priya about the lead-tech seat", note:"Before somebody else does", pri:"Soon", done:false },
+    { id:"ml4", text:"Windshield on Truck 4", note:"Insurance claim filed 7/21", pri:"Now",  done:true },
+    { id:"ml5", text:"Look at a second drain machine", note:"Every hydro-jet week we rent one", pri:"Someday", done:false }
+  ]; }
+  function items(){ var d=S.db(); if(!d.masterlist){ S.save(function(x){ x.masterlist = x.sample===false ? [] : seed(); }); }
+    return S.db().masterlist; }
+  var pri="Now";
+
+  function render(){
+    host.innerHTML="";
+    var list=items();
+    var open=list.filter(function(i){return !i.done;}).length;
+    var h='<h2>The list</h2><p class="sub">'+(open? open+' open item'+(open>1?'s':'') : 'Nothing open — write it down before it wakes you up at 2am.')+'</p>';
+    PRIS.forEach(function(p){
+      var rows=list.filter(function(i){return i.pri===p;});
+      if(!rows.length) return;
+      h+='<h3 class="small" style="letter-spacing:.06em;margin:14px 0 2px;color:var(--mut);">'+p.toUpperCase()+'</h3>';
+      rows.forEach(function(i){
+        h+='<div class="mlrow'+(i.done?' done':'')+'">'+
+          '<button class="mlchk" data-tgl="'+i.id+'">'+(i.done?'✓':'')+'</button>'+
+          '<div class="mltext">'+S.esc(i.text)+(i.note?'<span class="muted">'+S.esc(i.note)+'</span>':'')+'</div>'+
+          '<button class="mldel" data-del="'+i.id+'" title="Remove">×</button></div>';
+      });
+    });
+    h+='<div class="mladd"><input type="text" id="mltxt" placeholder="Write it down…">'+
+      '<div class="prisel">'+PRIS.map(function(p){
+        return '<button class="prib'+(p===pri?' on':'')+'" data-pri="'+p+'">'+p+'</button>';}).join("")+'</div>'+
+      '<button class="btn btn-acc" id="mlgo">Add</button></div>';
+    host.appendChild(S.card(h));
+
+    host.appendChild(S.card('<h2>Private means private</h2>'+
+      '<p class="sub">This room is scoped to the Owner and Admin seats. It is not a job board and it is not the Approval Desk — '+
+      'it is the napkin in your pocket, kept where you actually run the shop. Nothing here is visible to techs, '+
+      'the front desk, or the customer portal.</p>'));
+
+    host.querySelectorAll("[data-tgl]").forEach(function(b){ b.onclick=function(){
+      S.save(function(d){ d.masterlist.forEach(function(i){ if(i.id===b.dataset.tgl) i.done=!i.done; }); }); render(); }; });
+    host.querySelectorAll("[data-del]").forEach(function(b){ b.onclick=function(){
+      S.save(function(d){ d.masterlist=d.masterlist.filter(function(i){ return i.id!==b.dataset.del; }); }); render(); }; });
+    host.querySelectorAll("[data-pri]").forEach(function(b){ b.onclick=function(){ pri=b.dataset.pri; render(); }; });
+    var go=host.querySelector("#mlgo"), tx=host.querySelector("#mltxt");
+    function add(){ var v=tx.value.trim(); if(!v) return;
+      S.save(function(d){ d.masterlist.push({ id:"ml"+Date.now(), text:v, note:"", pri:pri, done:false }); });
+      render(); S.toast("On the list.","ok"); }
+    go.onclick=add; tx.onkeydown=function(e){ if(e.key==="Enter") add(); };
+  }
+  render();
+})();
+</script>
+</body>
+</html>
