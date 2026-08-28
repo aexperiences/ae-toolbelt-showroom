@@ -1772,6 +1772,35 @@
       '<div class="tierpill" id="tierPillStatic"><span class="dot"></span><div><b>'+esc(p.tier.name)+
       (p.changed?' <i class="cfg">configured</i>':'')+'</b> <span class="price">'+money(p.mo)+'/mo licensed</span></div></div><div class="who"><div class="av">'+esc(ini)+'</div><div>'+esc(s.owner)+
       '<br><span class="muted small">Owner · '+esc(s.name)+'</span></div></div>';
+
+    /* the tier switch — click the pill, pick the size */
+    var pill = bar.querySelector('#tierPillStatic');
+    if(pill){
+      pill.style.cursor='pointer';
+      pill.title='Change the size of the system';
+      pill.onclick = function(ev){
+        ev.stopPropagation();
+        var open = pill.querySelector('.tiermenu');
+        if(open){ open.parentNode.removeChild(open); return; }
+        var cur = db().tier || 'grandsuite';
+        var order = ['truck','shop','grandsuite'];
+        var m = document.createElement('div'); m.className='tiermenu';
+        m.innerHTML = '<div class="tmhead">CHOOSE THE SIZE</div>' + order.map(function(k){
+          var T = TIERS[k];
+          return '<div class="tierrow'+(k===cur?' on':'')+'" data-t="'+k+'">'+
+            '<span class="tierdot"></span><div><b>'+esc(T.name)+' <span class="tp">'+money(T.mo)+'/mo</span></b>'+
+            '<div class="td">'+esc(T.base)+'</div></div></div>';
+        }).join('');
+        pill.appendChild(m);
+        m.querySelectorAll('[data-t]').forEach(function(r){
+          r.onclick = function(e2){ e2.stopPropagation(); setTier(r.getAttribute('data-t')); location.reload(); };
+        });
+      };
+      document.addEventListener('click', function(){
+        var o = document.querySelector('.tiermenu'); if(o && o.parentNode) o.parentNode.removeChild(o);
+      });
+    }
+
     return bar; }
   function ribbon(){ return el('<div class="ribbon"><span class="live">LIVE SHOWROOM</span>'+
     ' — this is the real operating system, not a slideshow. Type anywhere; it saves in your browser. '+
