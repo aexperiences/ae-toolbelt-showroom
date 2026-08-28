@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Documents · Toolbelt OS</title>
+<meta name="description" content="Selkirk Mechanical — write it, save it as a real Word or Excel file, and it files itself. Powered by Accelerated Experiences LLC.">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="toolbelt.css">
+<style>
+.dc-wrap{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
+@media(max-width:980px){.dc-wrap{grid-template-columns:1fr}}
+.dc-list{background:var(--card);border:1px solid var(--line);border-radius:13px;overflow:hidden}
+.dc-row{display:flex;align-items:center;gap:11px;padding:11px 13px;border-top:1px solid var(--line-2);cursor:pointer;transition:.12s}
+.dc-row:first-child{border-top:none}
+.dc-row:hover{background:var(--sunk)}
+.dc-row.on{background:var(--blue-wash)}
+.dc-ic{width:34px;height:34px;border-radius:9px;background:var(--sunk);display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+.dc-row.on .dc-ic{background:#fff}
+.dc-nm{font-weight:600;font-size:13.5px;line-height:1.3}
+.dc-mt{font-size:11px;color:var(--mut);font-family:'IBM Plex Mono',monospace;margin-top:2px}
+.dc-new{width:100%;border:0;border-top:1px solid var(--line-2);background:var(--sunk);padding:12px;font:inherit;font-weight:600;font-size:13px;color:var(--blue-2);cursor:pointer}
+.dc-new:hover{background:var(--blue-wash)}
+.dc-tpl{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.dc-tpl button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 13px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:.12s}
+.dc-tpl button:hover{border-color:var(--blue-3);color:var(--blue-2);transform:translateY(-1px)}
+.dc-bar{display:flex;gap:5px;flex-wrap:wrap;align-items:center;padding:9px 11px;background:var(--sunk);border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0}
+.dc-bar button{border:1px solid transparent;background:transparent;border-radius:7px;min-width:32px;height:30px;padding:0 8px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;color:var(--ink)}
+.dc-bar button:hover{background:#fff;border-color:var(--line)}
+.dc-bar .sep{width:1px;height:20px;background:var(--line);margin:0 3px}
+.dc-page{border:1px solid var(--line);border-radius:0 0 12px 12px;background:#fff;padding:34px 40px;min-height:420px;font-size:15px;line-height:1.72;outline:none}
+.dc-page:focus{box-shadow:inset 0 0 0 2px var(--blue-3)}
+.dc-page h1{font-size:26px;margin:0 0 12px}
+.dc-page h2{font-size:19px;margin:22px 0 8px}
+.dc-page p{margin:0 0 12px}
+.dc-page ul,.dc-page ol{margin:0 0 12px 22px}
+.dc-title{width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;font:inherit;font-size:20px;font-weight:700;padding:6px 2px 10px;margin-bottom:12px;outline:none}
+.dc-title:focus{border-color:var(--blue)}
+.dc-acts{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+.dc-acts button{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px 15px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:.12s}
+.dc-acts button:hover{border-color:var(--blue-3);transform:translateY(-1px)}
+.dc-acts button.pri{background:var(--rail);color:#fff;border-color:var(--rail)}
+.dc-acts button.pri:hover{opacity:.9}
+.dc-sheet{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:13px}
+.dc-sheet th,.dc-sheet td{border:1px solid var(--line);padding:0}
+.dc-sheet th{background:var(--sunk);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--mut);padding:7px 9px;text-align:left}
+.dc-sheet td input{width:100%;border:0;background:transparent;font:inherit;padding:8px 9px;outline:none}
+.dc-sheet td input:focus{background:var(--blue-wash)}
+.dc-note{font-size:12px;color:var(--mut);margin-top:10px;line-height:1.6}
+.dc-flow{background:linear-gradient(160deg,var(--rail),#22384c);color:#e7eef4;border-radius:14px;padding:17px 20px;margin-bottom:16px}
+.dc-flow .pill{display:inline-block;background:var(--amber-3);color:#241a08;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:8px}
+.dc-flow h3{margin:0 0 5px;color:#fff;font-size:17px}
+.dc-flow p{margin:0;font-size:13px;color:#b9cbd8;line-height:1.55}
+</style>
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script>
+(function(){
+var T=window.Toolbelt, esc=T.esc;
+var c=T.mount({active:"documents.html",crumb:"Documents"});
+var KEY="toolbelt_documents_v1", RKEY="toolbelt_records_v1";
+
+/* ============================================================ zip, for real
+   A .docx and a .xlsx are ZIP files full of XML. We build the zip here, in the
+   browser, with the STORED method — no compression, no library, and Word and
+   Excel both open it. Nothing is faked and nothing leaves the machine.       */
+var CRCT=(function(){var t=new Int32Array(256);for(var n=0;n<256;n++){var c=n;
+  for(var k=0;k<8;k++)c=c&1?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c;}return t;})();
+function crc32(u8){var c=-1;for(var i=0;i<u8.length;i++)c=CRCT[(c^u8[i])&0xFF]^(c>>>8);return (c^-1)>>>0;}
+function utf8(s){return new TextEncoder().encode(s);}
+function zip(files){
+  var parts=[],central=[],off=0;
+  function u16(n){return [n&255,(n>>8)&255];}
+  function u32(n){return [n&255,(n>>8)&255,(n>>16)&255,(n>>24)&255];}
+  files.forEach(function(f){
+    var name=utf8(f.name), data=utf8(f.data), crc=crc32(data);
+    var h=[].concat(u32(0x04034b50),u16(20),u16(0),u16(0),u16(0),u16(0),
+                    u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0));
+    parts.push(new Uint8Array(h),name,data);
+    central.push({name:name,crc:crc,len:data.length,off:off});
+    off+=h.length+name.length+data.length;
+  });
+  var cd=[],cdLen=0;
+  central.forEach(function(e){
+    var h=[].concat(u32(0x02014b50),u16(20),u16(20),u16(0),u16(0),u16(0),u16(0),
+                    u32(e.crc),u32(e.len),u32(e.len),u16(e.name.length),
+                    u16(0),u16(0),u16(0),u16(0),u32(0),u32(e.off));
+    cd.push(new Uint8Array(h),e.name); cdLen+=h.length+e.name.length;
+  });
+  var end=new Uint8Array([].concat(u32(0x06054b50),u16(0),u16(0),
+            u16(central.length),u16(central.length),u32(cdLen),u32(off),u16(0)));
+  var all=parts.concat(cd,[end]), total=0;
+  all.forEach(function(p){total+=p.length;});
+  var out=new Uint8Array(total),p=0;
+  all.forEach(function(a){out.set(a,p);p+=a.length;});
+  return out;
+}
+function download(bytes,name,mime){
+  var b=new Blob([bytes],{type:mime}), u=URL.createObjectURL(b);
+  var a=document.createElement("a"); a.href=u; a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){URL.revokeObjectURL(u);},2000);
+}
+function xe(s){return String(s==null?"":s).replace(/[&<>"']/g,function(ch){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&apos;"}[ch];});}
+
+/* ---------------------------------------------------------------- word ---- */
+function runXml(text,b,i,u){
+  if(!text) return "";
+  var pr="";
+  if(b||i||u){ pr="<w:rPr>"+(b?"<w:b/>":"")+(i?"<w:i/>":"")+(u?'<w:u w:val="single"/>':"")+"</w:rPr>"; }
+  return "<w:r>"+pr+'<w:t xml:space="preserve">'+xe(text)+"</w:t></w:r>";
+}
+function nodeRuns(node,b,i,u){
+  var out="";
+  Array.prototype.forEach.call(node.childNodes,function(n){
+    if(n.nodeType===3){ out+=runXml(n.nodeValue,b,i,u); return; }
+    if(n.nodeType!==1) return;
+    var t=n.tagName.toLowerCase();
+    out+=nodeRuns(n, b||t==="b"||t==="strong", i||t==="i"||t==="em", u||t==="u");
+  });
+  return out;
+}
+function para(runs,style,bullet){
+  var pr="<w:pPr>";
+  if(style) pr+='<w:pStyle w:val="'+style+'"/>';
+  if(bullet) pr+='<w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr>';
+  pr+="</w:pPr>";
+  return "<w:p>"+pr+(runs||"")+"</w:p>";
+}
+function htmlToDocxBody(root){
+  var body="";
+  Array.prototype.forEach.call(root.children,function(n){
+    var t=n.tagName.toLowerCase();
+    if(t==="h1"){ body+=para(nodeRuns(n,1,0,0),"Heading1"); }
+    else if(t==="h2"){ body+=para(nodeRuns(n,1,0,0),"Heading2"); }
+    else if(t==="ul"||t==="ol"){
+      Array.prototype.forEach.call(n.children,function(li){ body+=para(nodeRuns(li,0,0,0),null,true); });
+    }
+    else { body+=para(nodeRuns(n,0,0,0)); }
+  });
+  if(!body) body=para("");
+  return body;
+}
+function makeDocx(title,root){
+  var body=htmlToDocxBody(root);
+  var doc='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'+
+    "<w:body>"+body+
+    '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/>'+
+    '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr>'+
+    "</w:body></w:document>";
+  var styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'+
+    '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/>'+
+    '<w:pPr><w:outlineLvl w:val="0"/><w:spacing w:before="240" w:after="120"/></w:pPr>'+
+    '<w:rPr><w:b/><w:sz w:val="36"/></w:rPr></w:style>'+
+    '<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/>'+
+    '<w:pPr><w:outlineLvl w:val="1"/><w:spacing w:before="200" w:after="100"/></w:pPr>'+
+    '<w:rPr><w:b/><w:sz w:val="28"/></w:rPr></w:style></w:styles>';
+  var numbering='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'+
+    '<w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/>'+
+    '<w:lvlText w:val="&#8226;"/><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr></w:lvl></w:abstractNum>'+
+    '<w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>';
+  return zip([
+    {name:"[Content_Types].xml",data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
+      '<Default Extension="xml" ContentType="application/xml"/>'+
+      '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'+
+      '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'+
+      '<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>'+
+      "</Types>"},
+    {name:"_rels/.rels",data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'+
+      "</Relationships>"},
+    {name:"word/_rels/document.xml.rels",data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'+
+      '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>'+
+      "</Relationships>"},
+    {name:"word/document.xml",data:doc},
+    {name:"word/styles.xml",data:styles},
+    {name:"word/numbering.xml",data:numbering}
+  ]);
+}
+
+/* --------------------------------------------------------------- excel ---- */
+function colName(n){var s="";n++;while(n>0){var m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=(n-m-1)/26;}return s;}
+function makeXlsx(rows){
+  var sd="";
+  rows.forEach(function(r,ri){
+    var cells="";
+    r.forEach(function(v,ci){
+      if(v===""||v==null) return;
+      var ref=colName(ci)+(ri+1);
+      if(/^-?\d+(\.\d+)?$/.test(String(v))) cells+='<c r="'+ref+'"><v>'+v+"</v></c>";
+      else cells+='<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+xe(v)+"</t></is></c>";
+    });
+    sd+='<row r="'+(ri+1)+'">'+cells+"</row>";
+  });
+  var sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+    "<sheetData>"+sd+"</sheetData></worksheet>";
+  return zip([
+    {name:"[Content_Types].xml",data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
+      '<Default Extension="xml" ContentType="application/xml"/>'+
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+
+      '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'+
+      "</Types>"},
+    {name:"_rels/.rels",data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'+
+      "</Relationships>"},
+    {name:"xl/workbook.xml",data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+      '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '+
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
+      '<sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>'},
+    {name:"xl/_rels/workbook.xml.rels",data:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'+
+      "</Relationships>"},
+    {name:"xl/worksheets/sheet1.xml",data:sheet}
+  ]);
+}
+
+/* =========================================================== the documents */
+var d=T.db(), shop=d.shop||{}, owner=shop.owner||"Dale Kirby";
+function today(){ try{ return T.iso(T.TODAY); }catch(e){ return String(T.TODAY); } }
+
+var TEMPLATES=[
+  {k:"proposal",label:"Proposal",kind:"doc",cab:"contracts",title:"Replacement proposal — ",
+   body:"<h1>Replacement proposal</h1><p>Prepared for <b>[customer]</b> by "+esc(shop.name||"Selkirk Mechanical")+".</p>"+
+        "<h2>What we found</h2><p>Write what the technician actually found on site.</p>"+
+        "<h2>What we recommend</h2><ul><li>Option one — the repair</li><li>Option two — the replacement</li><li>Option three — the replacement with the upgrade</li></ul>"+
+        "<h2>What it costs</h2><p>Pricing pulls from the estimate. Nothing is retyped.</p>"+
+        "<h2>Terms</h2><p>Work is warranted for one year on labour. Manufacturer warranty applies to parts.</p>"},
+  {k:"change",label:"Change order",kind:"doc",cab:"contracts",title:"Change order — ",
+   body:"<h1>Change order</h1><p>Job: <b>[job]</b> · Date: "+esc(today())+"</p>"+
+        "<h2>Change requested</h2><p>Describe the change and who asked for it.</p>"+
+        "<h2>Effect on price</h2><p>State the added or removed amount plainly.</p>"+
+        "<h2>Effect on schedule</h2><p>State the days added, if any.</p>"+
+        "<p>Signed copies file themselves into Records under Contracts.</p>"},
+  {k:"tailgate",label:"Safety meeting",kind:"doc",cab:"insurance",title:"Tailgate safety meeting — ",
+   body:"<h1>Tailgate safety meeting</h1><p>Date: "+esc(today())+" · Led by: "+esc(owner)+"</p>"+
+        "<h2>Topic</h2><p>One topic, five minutes, before the trucks roll.</p>"+
+        "<h2>Discussed</h2><ul><li>Hazard of the day</li><li>What we do about it</li><li>Who has the equipment</li></ul>"+
+        "<h2>Attended</h2><p>List the crew. This is the page an inspector asks for.</p>"},
+  {k:"sop",label:"SOP",kind:"doc",cab:"employment",title:"SOP — ",
+   body:"<h1>Standard operating procedure</h1><h2>Why this exists</h2><p>The thing that goes wrong when nobody writes it down.</p>"+
+        "<h2>Steps</h2><ol><li>First step</li><li>Second step</li><li>Third step</li></ol>"+
+        "<h2>Who owns it</h2><p>Name a person, not a department.</p>"},
+  {k:"letter",label:"Customer letter",kind:"doc",cab:"contracts",title:"Letter — ",
+   body:"<h1>"+esc(shop.name||"Selkirk Mechanical")+"</h1><p>"+esc(today())+"</p><p>Dear [customer],</p>"+
+        "<p>Write the letter here. It carries your name, your address and your logo — not ours.</p>"+
+        "<p>Sincerely,<br>"+esc(owner)+"</p>"},
+  {k:"pricebook",label:"Price sheet",kind:"sheet",cab:"money",title:"Flat-rate price sheet — ",
+   rows:[["Code","Task","Trade","Hours","Price"],
+         ["HV-101","Condenser fan motor — replace","HVAC","1.5","428"],
+         ["HV-118","Capacitor — replace","HVAC","0.5","189"],
+         ["PL-204","Water heater — replace 50 gal","Plumbing","3","1875"],
+         ["EL-310","Panel — 200A service upgrade","Electrical","8","3450"],
+         ["","","","",""],["","","","",""],["","","","",""]]},
+  {k:"timesheet",label:"Timesheet",kind:"sheet",cab:"employment",title:"Timesheet — ",
+   rows:[["Technician","Date","Job","On site","Off site","Hours"],
+         ["Wade Fillmore","","","","",""],["Marisela Ochoa","","","","",""],
+         ["Curtis Vandeveer","","","","",""],["Booker Reyes","","","","",""],
+         ["","","","","",""],["","","","","",""]]}
+];
+
+var SEEDDOCS=[
+  {id:"d1",kind:"doc",cab:"contracts",name:"Replacement proposal — Brackett residence",
+   when:"2026-07-26",who:owner,filed:true,
+   body:"<h1>Replacement proposal</h1><p>Prepared for <b>Brackett residence</b> by "+esc(shop.name||"Selkirk Mechanical")+".</p>"+
+        "<h2>What we found</h2><p>Compressor drawing locked-rotor amps on start. Unit is fourteen years old and the coil is original.</p>"+
+        "<h2>What we recommend</h2><ul><li>Repair the compressor and keep the coil</li><li>Replace the condenser and the coil together</li><li>Replace the system and add the variable-speed air handler</li></ul>"+
+        "<h2>What it costs</h2><p>Pricing carried over from estimate EST-1184. Nothing was retyped.</p>"},
+  {id:"d2",kind:"doc",cab:"insurance",name:"Tailgate safety meeting — ladder set-up",
+   when:"2026-07-27",who:owner,filed:true,
+   body:"<h1>Tailgate safety meeting</h1><p>Date: 2026-07-27 · Led by: "+esc(owner)+"</p>"+
+        "<h2>Topic</h2><p>Ladder set-up on frozen ground.</p>"+
+        "<h2>Discussed</h2><ul><li>Four-to-one rule</li><li>Tie off at the top, every time</li><li>Nobody sets a ladder alone in ice</li></ul>"},
+  {id:"d3",kind:"sheet",cab:"money",name:"Flat-rate price sheet — 2026 revision",
+   when:"2026-03-02",who:owner,filed:true,
+   rows:[["Code","Task","Trade","Hours","Price"],
+         ["HV-101","Condenser fan motor — replace","HVAC","1.5","428"],
+         ["HV-118","Capacitor — replace","HVAC","0.5","189"],
+         ["PL-204","Water heater — replace 50 gal","Plumbing","3","1875"],
+         ["EL-310","Panel — 200A service upgrade","Electrical","8","3450"]]}
+];
+
+function load(){ try{var v=JSON.parse(sessionStorage.getItem(KEY)); if(v&&v.length) return v;}catch(e){} return SEEDDOCS.slice(); }
+function persist(){ try{ sessionStorage.setItem(KEY,JSON.stringify(DOCS)); }catch(e){} }
+var DOCS=load(), CUR=DOCS[0]||null;
+
+function fileToRecords(doc){
+  var list=[];
+  try{ list=JSON.parse(sessionStorage.getItem(RKEY))||[]; }catch(e){}
+  if(!list.length){ list=[]; }
+  list.unshift({cab:doc.cab||"contracts",name:doc.name,kind:doc.kind==="sheet"?"xls":"doc",
+                tag:"fin",who:doc.who||owner,when:doc.when||today(),note:"Written in Documents"});
+  try{ sessionStorage.setItem(RKEY,JSON.stringify(list)); }catch(e){}
+  doc.filed=true; persist();
+}
+
+/* ------------------------------------------------------------------- ui --- */
+c.appendChild(T.page("Documents",
+  "Write it here. Save it as a real Word or Excel file. It files itself into Records — nobody types it twice."));
+
+c.appendChild(T.el('<div class="dc-flow"><span class="pill">No double entry</span>'+
+  '<h3>The document already knows the job</h3>'+
+  '<p>A proposal starts from the estimate. A change order starts from the job. A timesheet starts from the '+
+  'geofence stamps. You write the words — the system carries the numbers, and the finished file lands in '+
+  'the filing cabinet under the right tab without anybody moving it.</p></div>'));
+
+var host=document.createElement("div"); host.className="dc-wrap"; c.appendChild(host);
+var leftBox=document.createElement("div"); var rightBox=document.createElement("div");
+host.appendChild(leftBox); host.appendChild(rightBox);
+
+function paintList(){
+  leftBox.innerHTML="";
+  var box=document.createElement("div"); box.className="dc-list";
+  DOCS.forEach(function(doc){
+    var r=T.el('<div class="dc-row'+(CUR&&CUR.id===doc.id?" on":"")+'">'+
+      '<div class="dc-ic">'+(doc.kind==="sheet"?"&#128202;":"&#128196;")+'</div>'+
+      '<div><div class="dc-nm">'+esc(doc.name)+'</div>'+
+      '<div class="dc-mt">'+esc(doc.when||"")+(doc.filed?" · filed":" · draft")+'</div></div></div>');
+    r.onclick=function(){ CUR=doc; paint(); };
+    box.appendChild(r);
+  });
+  var nb=T.el('<button class="dc-new">+ New blank document</button>');
+  nb.onclick=function(){ newDoc({kind:"doc",cab:"contracts",title:"Untitled ",body:"<h1>Untitled</h1><p></p>"}); };
+  box.appendChild(nb);
+  leftBox.appendChild(T.card('<h2>Documents</h2><p class="sub">'+DOCS.length+
+    ' in the book &middot; '+DOCS.filter(function(x){return x.filed;}).length+' filed</p>'));
+  leftBox.appendChild(box);
+}
+
+function newDoc(tpl){
+  var doc={id:"d"+Date.now(),kind:tpl.kind,cab:tpl.cab,name:(tpl.title||"Untitled ")+today(),
+           when:today(),who:owner,filed:false};
+  if(tpl.kind==="sheet") doc.rows=JSON.parse(JSON.stringify(tpl.rows));
+  else doc.body=tpl.body;
+  DOCS.unshift(doc); CUR=doc; persist(); paint();
+  T.toast("New document started.","ok");
+}
+
+function paintEditor(){
+  rightBox.innerHTML="";
+  var tplRow=document.createElement("div"); tplRow.className="dc-tpl";
+  TEMPLATES.forEach(function(t){
+    var b=T.el("<button>"+esc(t.label)+"</button>");
+    b.onclick=function(){ newDoc(t); };
+    tplRow.appendChild(b);
+  });
+  var wrap=document.createElement("div");
+  wrap.appendChild(T.el('<h2 style="margin:0 0 4px">Start from a template</h2>'+
+    '<p class="sub" style="margin:0 0 10px">Every one of these is a page a shop actually keeps.</p>'));
+  wrap.appendChild(tplRow);
+  rightBox.appendChild(T.card(""));
+  rightBox.lastChild.appendChild(wrap);
+
+  if(!CUR){ rightBox.appendChild(T.card('<p class="muted">Pick a document on the left, or start one above.</p>')); return; }
+
+  var ed=document.createElement("div");
+  var title=T.el('<input class="dc-title" value="'+esc(CUR.name)+'">');
+  title.oninput=function(){ CUR.name=title.value; persist(); paintList(); };
+  ed.appendChild(title);
+
+  var page;
+  if(CUR.kind==="sheet"){
+    var tbl=document.createElement("table"); tbl.className="dc-sheet";
+    var head=document.createElement("tr");
+    (CUR.rows[0]||[]).forEach(function(h){ head.appendChild(T.el("<th>"+esc(h)+"</th>")); });
+    tbl.appendChild(head);
+    CUR.rows.slice(1).forEach(function(row,ri){
+      var tr=document.createElement("tr");
+      row.forEach(function(v,ci){
+        var td=document.createElement("td");
+        var inp=T.el('<input value="'+esc(v)+'">');
+        inp.oninput=function(){ CUR.rows[ri+1][ci]=inp.value; persist(); };
+        td.appendChild(inp); tr.appendChild(td);
+      });
+      tbl.appendChild(tr);
+    });
+    var sw=document.createElement("div");
+    sw.style.cssText="border:1px solid var(--line);border-radius:12px;overflow:auto";
+    sw.appendChild(tbl); ed.appendChild(sw);
+    var addr=T.el('<button class="dc-new" style="border-radius:0 0 12px 12px">+ Add a row</button>');
+    addr.onclick=function(){ CUR.rows.push(CUR.rows[0].map(function(){return "";})); persist(); paint(); };
+    sw.appendChild(addr);
+  } else {
+    var bar=document.createElement("div"); bar.className="dc-bar";
+    [["B","bold","<b>B</b>"],["I","italic","<i>I</i>"],["U","underline","<u>U</u>"],
+     ["SEP","",""],
+     ["H1","formatBlock:h1","H1"],["H2","formatBlock:h2","H2"],["P","formatBlock:p","&para;"],
+     ["SEP","",""],
+     ["UL","insertUnorderedList","&bull; List"],["OL","insertOrderedList","1. List"]
+    ].forEach(function(x){
+      if(x[0]==="SEP"){ bar.appendChild(T.el('<span class="sep"></span>')); return; }
+      var b=T.el("<button>"+x[2]+"</button>");
+      b.onmousedown=function(e){ e.preventDefault(); };
+      b.onclick=function(){
+        var cmd=x[1];
+        if(cmd.indexOf("formatBlock:")===0) document.execCommand("formatBlock",false,cmd.split(":")[1]);
+        else document.execCommand(cmd,false,null);
+        page.focus(); CUR.body=page.innerHTML; persist();
+      };
+      bar.appendChild(b);
+    });
+    ed.appendChild(bar);
+    page=T.el('<div class="dc-page" contenteditable="true"></div>');
+    page.innerHTML=CUR.body||"<p></p>";
+    page.oninput=function(){ CUR.body=page.innerHTML; persist(); };
+    ed.appendChild(page);
+  }
+
+  var acts=document.createElement("div"); acts.className="dc-acts";
+  var save=T.el('<button class="pri">Save</button>');
+  save.onclick=function(){ persist(); T.toast("Saved.","ok"); paintList(); };
+  acts.appendChild(save);
+
+  if(CUR.kind==="sheet"){
+    var xb=T.el("<button>Download .xlsx</button>");
+    xb.onclick=function(){
+      download(makeXlsx(CUR.rows), safeName(CUR.name)+".xlsx",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      T.toast("Excel file downloaded.","ok");
+    };
+    acts.appendChild(xb);
+    var cb=T.el("<button>Download .csv</button>");
+    cb.onclick=function(){
+      var csv=CUR.rows.map(function(r){return r.map(function(v){
+        return /[",\n]/.test(v)?'"'+String(v).replace(/"/g,'""')+'"':v; }).join(","); }).join("\n");
+      download(utf8(csv), safeName(CUR.name)+".csv","text/csv");
+      T.toast("CSV downloaded.","ok");
+    };
+    acts.appendChild(cb);
+  } else {
+    var wb=T.el("<button>Download .docx</button>");
+    wb.onclick=function(){
+      download(makeDocx(CUR.name,page), safeName(CUR.name)+".docx",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      T.toast("Word file downloaded.","ok");
+    };
+    acts.appendChild(wb);
+    var pb=T.el("<button>Print / PDF</button>");
+    pb.onclick=function(){
+      var w=window.open("","_blank");
+      w.document.write('<title>'+esc(CUR.name)+'</title><style>body{font:15px/1.7 Georgia,serif;'+
+        'max-width:44em;margin:48px auto;padding:0 24px}h1{font-size:26px}h2{font-size:19px}</style>'+
+        page.innerHTML);
+      w.document.close(); w.focus(); setTimeout(function(){w.print();},250);
+    };
+    acts.appendChild(pb);
+  }
+
+  var fb=T.el("<button>"+(CUR.filed?"Filed in Records &#10003;":"File it in Records")+"</button>");
+  fb.onclick=function(){
+    fileToRecords(CUR);
+    T.toast("Filed under "+CUR.cab+" in Records.","ok");
+    paint();
+  };
+  acts.appendChild(fb);
+  ed.appendChild(acts);
+
+  ed.appendChild(T.el('<div class="dc-note">The .docx and .xlsx are built here in the browser and open in '+
+    'Word, Excel, Pages, Numbers, Google Docs and LibreOffice. Nothing is uploaded to write them. '+
+    'Filing puts the finished page in the Records cabinet under <b>'+esc(CUR.cab)+'</b> — the same cabinet '+
+    'an inspector or an accountant would ask for it from.</div>'));
+
+  rightBox.appendChild(T.card(""));
+  rightBox.lastChild.appendChild(ed);
+}
+
+function safeName(s){ return String(s).replace(/[^\w\- ]+/g,"").replace(/\s+/g," ").trim().slice(0,80)||"document"; }
+function paint(){ paintList(); paintEditor(); }
+paint();
+})();
+</script>
+</body>
+</html>

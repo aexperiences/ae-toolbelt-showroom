@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skin Machine · Toolbelt OS</title>
+<meta name="description" content="Selkirk Mechanical — pick the skin the whole system wears. Powered by Accelerated Experiences LLC.">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script>
+(function(){
+var T=window.Toolbelt, esc=T.esc;
+var c=T.mount({active:"skins.html",crumb:"Skin Machine"});
+var SKINS=T.SKINS;
+
+c.appendChild(T.page("Skin Machine",
+  "One palette repaints the whole operating system &mdash; sidebar, cards, charts, the board. "+
+  "Pick the one your shop wants to look at all day, then drop your own colour on top of it."));
+
+c.appendChild(T.el('<section class="card"><h2>Dark is the default</h2>'+
+  '<p class="sub">These floors get read in a truck at six in the morning and in a shop office with the '+
+  'lights off. A white screen in either of those is a squint. <b>Graphite Night</b> is what a new build '+
+  'wakes up wearing &mdash; the bright ones are here if a shop wants them, not the other way round.</p></section>'));
+
+/* ------------------------------------------------------------ the shelf -- */
+var shelf=document.createElement("section"); shelf.className="card";
+shelf.appendChild(T.el('<h2>The shelf</h2><p class="sub">Tap one. It changes everything, on every floor, immediately.</p>'));
+var grid=document.createElement("div"); grid.className="sk-grid";
+shelf.appendChild(grid); c.appendChild(shelf);
+
+function preview(s,accent){
+  var v=s.v, ac=accent||v["--tang"]||"#e4832b";
+  return '<div class="sk-prev">'+
+    '<div class="rail" style="background:'+v["--rail"]+'"></div>'+
+    '<div class="body" style="background:'+v["--paper"]+'">'+
+      '<div class="bar" style="background:'+v["--card"]+';width:78%"></div>'+
+      '<div class="bar" style="background:'+v["--line"]+';width:56%"></div>'+
+      '<div class="bar" style="background:'+v["--line"]+';width:66%"></div>'+
+      '<div class="tile" style="background:'+v["--card"]+';border-left:5px solid '+ac+'"></div>'+
+    '</div></div>';
+}
+function paintShelf(){
+  var cur=T.skinNow();
+  grid.innerHTML="";
+  Object.keys(SKINS).forEach(function(k){
+    var s=SKINS[k];
+    var card=T.el('<div class="sk-card'+(k===cur.k?" on":"")+'">'+preview(s,cur.accent)+
+      '<div class="sk-meta"><b>'+esc(s.name)+(k===cur.k?'<span class="sk-live">On</span>':"")+'</b>'+
+      '<span>'+esc(s.note)+'</span></div></div>');
+    card.onclick=function(){ T.setSkin(k); T.toast(s.name+" on.","ok"); paintAll(); };
+    grid.appendChild(card);
+  });
+}
+
+/* ----------------------------------------------------------- your colour -- */
+var brand=document.createElement("section"); brand.className="card";
+c.appendChild(brand);
+function paintBrand(){
+  var cur=T.skinNow(), ac=cur.accent||"#e4832b";
+  brand.innerHTML="";
+  brand.appendChild(T.el('<h2>Your colour</h2><p class="sub">The accent runs through every button, every '+
+    'active row, the dispatch chips and the price pill. Put your own on it &mdash; this is the part that '+
+    'makes it stop looking like our software and start looking like yours.</p>'));
+  var row=document.createElement("div"); row.className="sk-swatches";
+  var lab=T.el('<label>Pick it <input type="color" value="'+esc(ac)+'"></label>');
+  var inp=lab.querySelector("input");
+  inp.oninput=function(){ T.setSkin(null, inp.value); paintShelf(); };
+  row.appendChild(lab);
+  [["#e4832b","Safety orange"],["#2f7d8c","Teal"],["#2f8f6b","Green"],
+   ["#b4485e","Red"],["#3f6ea8","Blue"],["#7a5aa8","Violet"],["#e4a62b","Gold"]].forEach(function(p){
+    var b=T.el('<label style="cursor:pointer"><span style="width:20px;height:20px;border-radius:50%;'+
+      'display:inline-block;background:'+p[0]+'"></span>'+esc(p[1])+'</label>');
+    b.onclick=function(){ T.setSkin(null,p[0]); paintAll(); };
+    row.appendChild(b);
+  });
+  var rst=T.el('<label style="cursor:pointer">Back to safety orange</label>');
+  rst.onclick=function(){ T.setSkin(null,null); paintAll(); };
+  row.appendChild(rst);
+  brand.appendChild(row);
+  brand.appendChild(T.el('<div class="srcnote" style="margin-top:14px">Skins live in this browser. '+
+    'On a real build the shop&rsquo;s skin is set once and every seat opens on it &mdash; and the '+
+    'white-label build carries the shop&rsquo;s own logo and web address with it.</div>'));
+}
+
+/* -------------------------------------------------------------- the demo -- */
+var demo=document.createElement("section"); demo.className="card";
+c.appendChild(demo);
+function paintDemo(){
+  demo.innerHTML="";
+  demo.appendChild(T.el('<h2>What it repaints</h2><p class="sub">Live, on this page, in the skin you just picked.</p>'));
+  var d=T.db();
+  var strip=document.createElement("div"); strip.className="stats";
+  strip.innerHTML =
+    T.stat("Week booked", T.money(T.weekRevenue?T.weekRevenue():0), "If the week runs as scheduled","good")+
+    T.stat("Fill rate", T.pct(T.fillRate?T.fillRate():0), "Jobs covered / jobs booked","watch")+
+    T.stat("Callback cost", T.money(T.callbackCost?T.callbackCost():0), "Redone free this week","bad")+
+    T.stat("Unassigned", (T.openHours?T.openHours().toFixed(1):"0")+" hrs", "Nobody on them yet","");
+  demo.appendChild(strip);
+  var row=document.createElement("div");
+  row.style.cssText="display:flex;gap:9px;flex-wrap:wrap;margin-top:14px";
+  row.innerHTML='<button class="btn tang">Primary action</button>'+
+    '<button class="btn teal">Secondary</button>'+
+    '<button class="btn">Plain</button>'+
+    T.tag("HVAC")+T.tag("Won","good")+T.tag("Late","bad");
+  demo.appendChild(row);
+}
+
+function paintAll(){ paintShelf(); paintBrand(); paintDemo(); }
+paintAll();
+})();
+</script>
+</body>
+</html>
