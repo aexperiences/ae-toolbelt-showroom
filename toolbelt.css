@@ -34,6 +34,16 @@
   --sh-lg:0 2px 4px rgba(31,39,46,.06), 0 24px 56px -24px rgba(31,39,46,.30);
   --dot-1:rgba(242,121,46,.05); --dot-2:rgba(23,162,162,.05);
   --glass:rgba(255,253,249,.88);
+  /* text sitting ON a wash — a dark skin needs the light shade instead */
+  --t-tang:#c46b18; --t-teal:#245f6b; --t-good:#245f6b; --t-watch:#c46b18; --t-bad:#b4485e;
+  --chip-ink:var(--ink-2); --on-glass:var(--ink);
+  /* ink that sits ON a bright brand fill — never white on orange */
+  --on-tang:#2a1b08; --on-gold:#241a08;
+  /* legacy names other floors still ask for — aliased so they follow the skin */
+  --amber:var(--gold); --amber-2:var(--t-watch); --amber-3:var(--gold); --amber-wash:var(--gold-wash);
+  --blue:var(--teal); --blue-2:var(--t-teal); --blue-3:var(--teal); --blue-wash:var(--teal-wash);
+  --char:var(--rail); --char2:var(--rail-2);
+  --indigo:#7a5aa8; --indigo2:#5d4184; --indigo3:#9d80c4;
   --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
@@ -41,6 +51,7 @@
 
 
 *{box-sizing:border-box}
+button,input,select,textarea{color:var(--ink)}
 html,body{margin:0;padding:0}
 body{
   font-family:var(--sans); color:var(--ink); background:var(--paper);
@@ -131,7 +142,7 @@ body::before{
 }
 .ribbon .live{
   font-family:var(--mono); font-size:10px; letter-spacing:.1em; font-weight:700;
-  background:var(--ink); color:var(--tang-3); padding:3px 7px; border-radius:6px; margin-right:7px;
+  background:var(--rail); color:var(--tang-3); padding:3px 7px; border-radius:6px; margin-right:7px;
 }
 .ribbon a{color:var(--tang-2); font-weight:700}
 
@@ -158,7 +169,7 @@ body::before{
 .tierpill .dot{width:8px;height:8px;border-radius:50%;background:var(--good); flex:none}
 .tierpill b{font-weight:800}
 .tierpill .cfg{
-  font-style:normal; font-size:9.5px; font-family:var(--mono); color:var(--tang-2);
+  font-style:normal; font-size:9.5px; font-family:var(--mono); color:var(--t-tang);
   background:var(--tang-wash); padding:1px 5px; border-radius:5px; margin-left:3px;
 }
 .tierpill .price{color:var(--mut); margin-left:4px; font-family:var(--mono); font-size:11.5px}
@@ -279,9 +290,9 @@ td.k{font-family:var(--mono); font-size:11.8px; color:var(--ink-2); white-space:
   display:inline-block; font-size:10.5px; padding:2px 8px; border-radius:999px;
   background:var(--sunk); color:var(--ink-2); font-weight:800; white-space:nowrap;
 }
-.tag.good{background:var(--good-w); color:var(--teal-2)}
-.tag.watch{background:var(--watch-w); color:var(--tang-2)}
-.tag.bad{background:var(--bad-w); color:var(--bad)}
+.tag.good{background:var(--good-w); color:var(--t-good)}
+.tag.watch{background:var(--watch-w); color:var(--t-watch)}
+.tag.bad{background:var(--bad-w); color:var(--t-bad)}
 .tag.mono{font-family:var(--mono); font-size:10px; font-weight:600}
 .tag.ghost{background:transparent; border:1px solid var(--line); color:var(--mut)}
 .tag.dot::before{content:"●"; margin-right:5px; font-size:8px; vertical-align:1px}
@@ -310,9 +321,9 @@ input[type=range]{padding:0; border:none; background:transparent; accent-color:v
 .btn:hover{background:#1a1310}
 .btn.ghost{background:transparent; color:var(--ink); border-color:var(--line)}
 .btn.ghost:hover{background:var(--sunk); border-color:var(--tang)}
-.btn.brass,.btn.tang{background:var(--tang); border-color:var(--tang); color:#fff}
+.btn.brass,.btn.tang{background:var(--tang); border-color:var(--tang); color:var(--on-tang)}
 .btn.brass:hover,.btn.tang:hover{background:var(--tang-2); border-color:var(--tang-2)}
-.btn.teal{background:var(--teal); border-color:var(--teal); color:#fff}
+.btn.teal{background:var(--teal-2); border-color:var(--teal-2); color:#fff}
 .btn.teal:hover{background:var(--teal-2); border-color:var(--teal-2)}
 .btn.sm{padding:6px 11px; font-size:12px}
 
@@ -392,7 +403,7 @@ input[type=range]{padding:0; border:none; background:transparent; accent-color:v
    bottom bar carries the key rooms, so content is never pushed down. */
 .mobilebar{
   display:none; position:fixed; left:0; right:0; bottom:0; z-index:120;
-  background:rgba(255,253,249,.92); backdrop-filter:blur(12px);
+  background:var(--glass); backdrop-filter:blur(12px);
   border-top:1px solid var(--line); padding:6px 6px calc(6px + env(safe-area-inset-bottom));
   justify-content:space-around; box-shadow:0 -6px 24px -14px rgba(42,32,26,.4);
 }
@@ -666,3 +677,22 @@ td.right+td,th.right+th{padding-left:16px}
 .sk-swatches label{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;
   border:1px solid var(--line);border-radius:10px;padding:7px 11px;background:var(--card);cursor:pointer}
 .sk-swatches input[type=color]{width:26px;height:26px;border:0;background:none;padding:0;cursor:pointer}
+
+
+/* ---------------------------------------------- skin-safety, added Aug 2026
+   Found by running a real contrast pass over every floor in the dark skin. */
+.man-fab{color:var(--on-tang) !important}
+.sk-live{color:var(--on-tang) !important}
+.dc-page{color:#1f272e}
+.dc-page h1,.dc-page h2,.dc-page p,.dc-page li,.dc-page b{color:#1f272e}
+.dc-sheet td input{color:#1f272e}
+.stat.good .s-v{color:var(--t-good)}
+.stat.watch .s-v{color:var(--t-watch)}
+.stat.bad .s-v{color:var(--t-bad)}
+
+/* `.warn` on its own means red text; `.note.warn` is an amber panel, not red text. */
+.note.warn{color:var(--t-watch)}
+.note.good{color:var(--t-good)}
+.warn{color:var(--t-bad)}
+.modal h3.warn{color:var(--t-bad)}
+.dc-row.on .dc-ic{background:var(--card)}
