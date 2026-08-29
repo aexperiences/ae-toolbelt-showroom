@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="100%" height="100%">
+<defs>
+<linearGradient id="tile" x1="0" y1="0" x2="0.35" y2="1">
+<stop offset="0%" stop-color="#a08055"/><stop offset="46%" stop-color="#5e492e"/><stop offset="100%" stop-color="#1e1710"/></linearGradient>
+<linearGradient id="glare" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#fff" stop-opacity=".20"/><stop offset="44%" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<linearGradient id="wood" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0%" stop-color="#c39a63"/><stop offset="38%" stop-color="#a67f4c"/><stop offset="100%" stop-color="#6d5130"/></linearGradient>
+<linearGradient id="pap" x1="0" y1="0" x2="0.3" y2="1">
+<stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#e9ebe6"/></linearGradient>
+<linearGradient id="permit" x1="0" y1="0" x2="0.3" y2="1">
+<stop offset="0%" stop-color="#ffe083"/><stop offset="55%" stop-color="#f0c04a"/><stop offset="100%" stop-color="#c9931c"/></linearGradient>
+<linearGradient id="sleeve" x1="0" y1="0" x2="0.6" y2="1">
+<stop offset="0%" stop-color="#ffffff" stop-opacity=".42"/><stop offset="55%" stop-color="#ffffff" stop-opacity=".06"/></linearGradient>
+</defs>
+<rect width="1024" height="1024" fill="url(#tile)"/><rect width="1024" height="1024" fill="url(#glare)"/>
+<ellipse cx="512" cy="906" rx="336" ry="28" fill="#120d07" opacity=".55"/>
+
+<!-- the stud -->
+<rect x="126" y="96" width="176" height="812" rx="10" fill="url(#wood)"/>
+<g stroke="#7d5f38" stroke-width="6" opacity=".55" fill="none">
+  <path d="M172 110 q18 190 0 380 q-18 190 0 400"/>
+  <path d="M244 110 q-14 210 0 400 q14 190 0 390"/>
+</g>
+<rect x="126" y="96" width="26" height="812" fill="#ffffff" opacity=".18"/>
+
+<!-- worksheet behind -->
+<g transform="rotate(4 620 540)">
+  <rect x="392" y="236" width="470" height="612" rx="18" fill="#241b10" opacity=".45" transform="translate(12 16)"/>
+  <rect x="392" y="236" width="470" height="612" rx="18" fill="url(#pap)"/>
+  <rect x="432" y="286" width="230" height="24" rx="12" fill="#3d4750"/>
+  <g fill="#c3cbd0">
+    <rect x="432" y="340" width="380" height="16" rx="8"/><rect x="432" y="378" width="330" height="16" rx="8"/>
+    <rect x="432" y="416" width="380" height="16" rx="8"/>
+  </g>
+  <g fill="#8e9aa2"><rect x="432" y="474" width="150" height="18" rx="9"/></g>
+  <g fill="#c3cbd0">
+    <rect x="472" y="524" width="300" height="14" rx="7"/><rect x="472" y="560" width="264" height="14" rx="7"/>
+    <rect x="472" y="596" width="300" height="14" rx="7"/><rect x="472" y="632" width="220" height="14" rx="7"/>
+  </g>
+  <g fill="#2f7d8c"><circle cx="450" cy="531" r="9"/><circle cx="450" cy="567" r="9"/><circle cx="450" cy="603" r="9"/><circle cx="450" cy="639" r="9"/></g>
+  <path d="M448 760 q46 -54 82 -12 q26 30 50 -14 q22 -40 50 6 q18 34 46 -6"
+        fill="none" stroke="#2f4a8c" stroke-width="13" stroke-linecap="round"/>
+  <rect x="432" y="792" width="300" height="8" rx="4" fill="#c9d0d4"/>
+</g>
+
+<!-- the permit, in its sleeve, stapled to the stud -->
+<g transform="rotate(-4 340 470)">
+  <rect x="176" y="228" width="392" height="486" rx="16" fill="#1c150c" opacity=".5" transform="translate(14 18)"/>
+  <rect x="176" y="228" width="392" height="486" rx="16" fill="url(#permit)"/>
+  <rect x="176" y="228" width="392" height="86" rx="16" fill="#b4485e"/>
+  <rect x="176" y="284" width="392" height="30" fill="#b4485e"/>
+  <rect x="212" y="252" width="228" height="26" rx="13" fill="#ffe4ea"/>
+  <g fill="#8a6410">
+    <rect x="212" y="348" width="180" height="20" rx="10"/>
+    <rect x="212" y="392" width="300" height="14" rx="7" opacity=".7"/>
+    <rect x="212" y="424" width="256" height="14" rx="7" opacity=".7"/>
+    <rect x="212" y="472" width="150" height="20" rx="10"/>
+    <rect x="212" y="516" width="300" height="14" rx="7" opacity=".7"/>
+    <rect x="212" y="548" width="220" height="14" rx="7" opacity=".7"/>
+  </g>
+  <!-- the number that makes it real -->
+  <rect x="212" y="606" width="304" height="76" rx="12" fill="#fff6dd" stroke="#c9931c" stroke-width="6"/>
+  <g fill="#7d5b0d">
+    <rect x="236" y="632" width="30" height="24" rx="4"/><rect x="276" y="632" width="30" height="24" rx="4"/>
+    <rect x="316" y="632" width="30" height="24" rx="4"/><rect x="366" y="632" width="30" height="24" rx="4"/>
+    <rect x="406" y="632" width="30" height="24" rx="4"/><rect x="446" y="632" width="30" height="24" rx="4"/>
+  </g>
+  <!-- the clear sleeve -->
+  <rect x="176" y="228" width="392" height="486" rx="16" fill="url(#sleeve)"/>
+  <rect x="176" y="228" width="392" height="486" rx="16" fill="none" stroke="#ffffff" stroke-width="7" opacity=".45"/>
+</g>
+<!-- staples -->
+<g fill="#c9d0d4">
+  <rect x="216" y="196" width="46" height="13" rx="5"/>
+  <rect x="216" y="742" width="46" height="13" rx="5"/>
+</g>
+
+<!-- the gate: approved -->
+<g transform="translate(806 786)">
+  <circle cx="0" cy="0" r="104" fill="#120d07" opacity=".45" transform="translate(6 10)"/>
+  <circle cx="0" cy="0" r="104" fill="#2f9d5b"/>
+  <circle cx="0" cy="0" r="104" fill="none" stroke="#1d6c3e" stroke-width="9"/>
+  <path d="M-52 2 L-10 44 L58 -40" fill="none" stroke="#fff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>
