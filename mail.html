@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mail · Toolbelt OS</title>
+<meta name="description" content="Selkirk Mechanical — the shop's inbox, where every message lands on a job instead of in a pile. Powered by Accelerated Experiences LLC.">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="toolbelt.css">
+<style>
+.mb-wrap{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
+@media(max-width:1000px){.mb-wrap{grid-template-columns:1fr}}
+.mb-folders{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.mb-folders button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 14px;
+  font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink);transition:.12s}
+.mb-folders button:hover{border-color:var(--blue-3);color:var(--blue-2)}
+.mb-folders button.on{background:var(--rail);color:var(--on-rail);border-color:var(--rail)}
+.mb-folders button b{font-family:var(--mono);font-size:11px;opacity:.75;margin-left:5px}
+.mb-list{background:var(--card);border:1px solid var(--line);border-radius:13px;overflow:hidden}
+.mb-row{display:flex;gap:11px;padding:12px 13px;border-top:1px solid var(--line-2);cursor:pointer;transition:.12s;align-items:flex-start}
+.mb-row:first-child{border-top:none}
+.mb-row:hover{background:var(--sunk)}
+.mb-row.on{background:var(--blue-wash)}
+.mb-av{width:34px;height:34px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:13px;letter-spacing:.02em}
+.mb-av{color:var(--ink)}
+.mb-av.tang{background:var(--tang-wash)}
+.mb-av.teal{background:var(--teal-wash)}
+.mb-av.gold{background:var(--gold-wash)}
+.mb-av.good{background:var(--good-w)}
+.mb-av.bad{background:var(--bad-w)}
+.mb-av.sent{background:var(--sunk)}
+.mb-body{min-width:0;flex:1}
+.mb-top{display:flex;align-items:baseline;gap:8px}
+.mb-from{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mb-when{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink-2);white-space:nowrap}
+.mb-subj{font-size:12.5px;color:var(--ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mb-row.unread .mb-from,.mb-row.unread .mb-subj{font-weight:700;color:var(--ink)}
+.mb-dot{width:8px;height:8px;border-radius:50%;background:var(--tang);flex:none;margin-top:13px}
+.mb-dot.off{background:transparent}
+.mb-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.mb-chip{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  padding:2px 7px;border-radius:999px;background:var(--sunk);color:var(--chip-ink)}
+.mb-chip.job{background:var(--teal-wash);color:var(--ink)}
+.mb-chip.act{background:var(--tang-wash);color:var(--ink)}
+.mb-chip.done{background:var(--good-w);color:var(--ink)}
+.mb-empty{padding:26px 16px;text-align:center;color:var(--ink-2);font-size:13px}
+.mb-head{display:flex;gap:13px;align-items:flex-start;padding-bottom:14px;border-bottom:1px solid var(--line-2)}
+.mb-h-subj{font-size:19px;font-weight:700;line-height:1.3;margin:0 0 4px}
+.mb-h-meta{font-size:12px;color:var(--ink-2);font-family:var(--mono)}
+.mb-belongs{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0;padding:12px 14px;border-radius:12px;
+  background:var(--sunk);border:1px solid var(--line-2)}
+.mb-belongs div{font-size:12px;line-height:1.45}
+.mb-belongs .k{display:block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin-bottom:2px}
+.mb-belongs .v{font-weight:600;color:var(--ink)}
+.mb-text{font-size:14px;line-height:1.72;margin:16px 0;white-space:pre-wrap}
+.mb-acts{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--line-2)}
+.mb-acts button{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px 15px;
+  font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:.12s;color:var(--ink)}
+.mb-acts button:hover{border-color:var(--blue-3);transform:translateY(-1px)}
+.mb-acts button.pri{background:var(--rail);color:var(--on-rail);border-color:var(--rail)}
+.mb-acts button.pri:hover{opacity:.92}
+.mb-acts button:disabled{opacity:.5;cursor:default;transform:none}
+.mb-thread{margin-top:16px;border-left:3px solid var(--teal);padding:11px 0 2px 14px}
+.mb-thread .t{font-size:11px;font-family:var(--mono);color:var(--ink-2);margin-bottom:4px}
+.mb-comp{margin-top:16px;border:1px solid var(--line);border-radius:13px;overflow:hidden}
+.mb-comp .hd{background:var(--sunk);padding:9px 13px;font-size:11px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink-2);border-bottom:1px solid var(--line-2)}
+.mb-comp .fld{display:flex;align-items:center;gap:9px;padding:9px 13px;border-bottom:1px solid var(--line-2)}
+.mb-comp .fld label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);width:46px;flex:none}
+.mb-comp .fld input{flex:1;border:0;background:transparent;font:inherit;font-size:13px;color:var(--ink);outline:none}
+.mb-comp textarea{width:100%;border:0;background:transparent;font:inherit;font-size:13.5px;line-height:1.66;
+  color:var(--ink);padding:13px;min-height:210px;resize:vertical;outline:none;box-sizing:border-box}
+.mb-tpl{display:flex;gap:7px;flex-wrap:wrap;padding:10px 13px;background:var(--sunk);border-bottom:1px solid var(--line-2)}
+.mb-tpl button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;
+  font:inherit;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink)}
+.mb-tpl button:hover{border-color:var(--blue-3);color:var(--blue-2)}
+.mb-rules{background:linear-gradient(160deg,var(--rail),#22384c);color:#e7eef4;border-radius:14px;padding:17px 20px;margin-bottom:16px}
+.mb-rules .pill{display:inline-block;background:var(--amber-3);color:var(--on-gold);font-size:10.5px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:8px}
+.mb-rules h3{margin:0 0 5px;color:#fff;font-size:17px}
+.mb-rules p{margin:0;font-size:13px;color:#b9cbd8;line-height:1.55}
+.mb-rules ul{margin:9px 0 0 18px;padding:0;font-size:12.5px;color:#b9cbd8;line-height:1.7}
+.mb-note{font-size:12px;color:var(--ink-2);margin-top:12px;line-height:1.6}
+</style>
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script>
+(function(){
+var T=window.Toolbelt, esc=T.esc;
+var c=T.mount({active:"mail.html",crumb:"Mail"});
+var KEY="toolbelt_mail_v1", RKEY="toolbelt_records_v1";
+
+/* ================================================================== state
+   The mailbox does not keep its own copy of the shop. It keeps only what a
+   person DID to a message — read it, filed it, answered it — and rebuilds the
+   messages themselves from the live book every time the page opens. That way
+   an inbox can never drift away from the board it is supposed to be about.  */
+function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||{}; }catch(e){ return {}; } }
+function persist(){ try{ localStorage.setItem(KEY,JSON.stringify(ST)); }catch(e){} }
+var ST=load(); ST.acts=ST.acts||{}; ST.sent=ST.sent||[];
+function act(id){ return ST.acts[id]||(ST.acts[id]={}); }
+
+var shop=T.db().shop||{};
+function shopDomain(){
+  return String(shop.name||"shop").toLowerCase().replace(/[^a-z0-9]+/g,"")+".com";
+}
+function deskAddr(){ return "front.desk@"+shopDomain(); }
+function signature(){
+  return "\n\n—\n"+(shop.owner||"Front desk")+"\n"+(shop.name||"")+
+         "\n"+(shop.phone||"")+"  ·  "+(shop.city||"")+", "+(shop.state||"")+
+         "\n"+(shop.hours||"");
+}
+function addrFor(name){
+  var n=String(name||"customer").toLowerCase().replace(/[^a-z ]/g,"").trim().split(/\s+/);
+  return (n[0]||"c")+"."+(n[1]||"x")+"@mail.example";
+}
+function ago(h){
+  var d=new Date(); d.setHours(d.getHours()-h);
+  var hh=d.getHours(), m=String(d.getMinutes()).padStart(2,"0");
+  var ap=hh<12?"a":"p"; hh=hh%12||12;
+  return (h<12?"":"Yest ")+hh+":"+m+ap;
+}
+
+/* ================================================================ the feed
+   Every message below is generated from something that is actually true in
+   this shop's book right now: a booked call, an estimate waiting on an answer,
+   a document out for signature, a part below its truck minimum, a permit that
+   was never closed out, a ticket about to expire, a plan up for renewal, a
+   callback. If the book changes, the inbox changes with it.                 */
+function feed(){
+  var out=[], d=T.db();
+
+  (T.calls()||[]).filter(function(k){ return k.status==="booked"; }).slice(0,3).forEach(function(k,i){
+    var cust=k.customerId?T.customerById(k.customerId):null;
+    var who=(cust&&cust.name)||k.name||k.from;
+    out.push({ id:"m-book-"+k.id, kind:"booking", tone:"tang", h:1+i,
+      fromName:who, from:addrFor(who), customerId:k.customerId||null, jobId:k.jobId||null,
+      subject:["Confirming what we talked about","Quick question before you come out",
+               "Can we still do that time?"][i%3],
+      text:"Hi — just making sure I've got this right.\n\n"+(k.reason||"Service call")+
+           ".\n\nYou said someone could come out. Do I need to be home the whole time, and do you take card?\n\nThanks,\n"+who,
+      want:"reply", tpl:"confirm" });
+  });
+
+  (T.docsAwaiting()||[]).slice(0,2).forEach(function(doc,i){
+    var cust=doc.subjectId?T.customerById(doc.subjectId):null;
+    var who=(doc.signer&&doc.signer.name)||doc.subject||(cust&&cust.name)||"the person you sent it to";
+    var addr=(doc.signer&&doc.signer.email)||addrFor(who);
+    var hire=/employ|offer|packet|onboard|hire|w-?4|i-?9/i.test(String(doc.title||""));
+    out.push({ id:"m-sign-"+(doc.id||i), kind:"signature", tone:"gold", h:3+i,
+      fromName:who, from:addr, customerId:doc.subjectId||null, jobId:doc.jobId||null,
+      subject:"Re: "+(doc.title||"the paperwork you sent"),
+      text:hire
+        ? ("Thanks for sending this over. I opened the link and I'll sign it tonight.\n\n"+
+           "Two things — do you need my card copies before the start date, and who do I report to that first morning?\n\n"+who)
+        : ("Got the link. I opened it but I want to read it properly tonight before I sign.\n\n"+
+           "One question — is the price on there the final number or does it move once you're in the wall?\n\n"+who),
+      want:"reply", tpl:hire?"hire":"signfollow" });
+  });
+
+  (T.reorderFlags()||[]).slice(0,2).forEach(function(f,i){
+    var part=f.part||f; var tech=f.tech||null;
+    var nm=(part&&(part.name||part.desc))||"the part you ordered";
+    var sku=(part&&part.sku)||"";
+    out.push({ id:"m-part-"+(sku||i), kind:"supplier", tone:"teal", h:4+i,
+      fromName:"Ferris Supply · Will Call", from:"willcall@supplier.example",
+      customerId:null, jobId:null,
+      subject:"Ready for pickup — "+nm,
+      text:"Your order is on the will-call shelf under "+(shop.name||"your account")+".\n\n"+
+           (sku?("SKU "+sku+"\n"):"")+nm+
+           (tech&&tech.name?("\nFlagged for: "+tech.name+"'s truck"):"")+
+           "\n\nWe hold will-call for 5 business days.",
+      want:"file", tpl:null });
+  });
+
+  (T.permitGaps()||[]).slice(0,1).forEach(function(g,i){
+    out.push({ id:"m-permit-"+g.job.id, kind:"permit", tone:"bad", h:6,
+      fromName:"Kootenai County · Building Dept", from:"permits@county.example",
+      customerId:g.customer?g.customer.id:null, jobId:g.job.id,
+      subject:"Permit not closed — "+((g.customer&&g.customer.addr)||"job address"),
+      text:"Our records show work of a type that requires a permit at this address with no permit number on file.\n\n"+
+           "Job type: "+(g.job.task||"")+"\n"+
+           "Rule: "+((g.rule&&g.rule.why)||"permit required")+"\n\n"+
+           "Please supply the permit number or file an application within 10 business days.",
+      want:"job", tpl:null });
+  });
+
+  (T.licIssues()||[]).slice(0,1).forEach(function(li,i){
+    out.push({ id:"m-lic-"+li.tech.id+"-"+li.lic.k, kind:"licence", tone:"gold", h:7,
+      fromName:"Idaho Division of Building Safety", from:"noreply@dbs.example",
+      customerId:null, jobId:null,
+      subject:"Renewal notice — "+(li.lic.label||li.lic.k),
+      text:"This is a courtesy notice for a credential registered to "+(shop.name||"your company")+".\n\n"+
+           "Holder: "+(li.tech.name||"")+"\n"+
+           "Credential: "+(li.lic.label||li.lic.k)+"\n"+
+           "Status: "+((li.status&&li.status.state)||"review")+"\n\n"+
+           "Renew online. A lapsed credential removes the holder from dispatch eligibility.",
+      want:"file", tpl:null });
+  });
+
+  (T.renewalsDue()||[]).slice(0,1).forEach(function(r,i){
+    var m=r.membership||r; var cust=m.customerId?T.customerById(m.customerId):null;
+    var who=(cust&&cust.name)||"Member";
+    out.push({ id:"m-plan-"+((m&&m.id)||i), kind:"plan", tone:"good", h:9,
+      fromName:who, from:addrFor(who), customerId:(cust&&cust.id)||null, jobId:null,
+      subject:"Is my plan still going?",
+      text:"I got a note that my agreement is coming up. I want to keep it — we've been happy.\n\n"+
+           "Can you just tell me what it costs now and get the next visit on the books?\n\n"+who,
+      want:"reply", tpl:"renew" });
+  });
+
+  (T.callbacks()||[]).slice(0,1).forEach(function(j,i){
+    var cust=T.customerById(j.customerId); var who=(cust&&cust.name)||"Customer";
+    out.push({ id:"m-cb-"+j.id, kind:"callback", tone:"bad", h:11,
+      fromName:who, from:addrFor(who), customerId:j.customerId, jobId:j.id,
+      subject:"It's doing it again",
+      text:"Your guy was out and it was fine for a day, and now it's doing the same thing.\n\n"+
+           "I'm not trying to be difficult. I'd just like it fixed.\n\n"+who,
+      want:"reply", tpl:"callback" });
+  });
+
+  var over=(T.calls()||[]).filter(function(k){ return T.afterHours&&k.when&&/0[0-5]:|2[0-3]:/.test(k.when); });
+  out.push({ id:"m-web-1", kind:"booking", tone:"tang", h:13,
+    fromName:"Toolbelt · Web Booking", from:"bookings@"+shopDomain(),
+    customerId:null, jobId:null,
+    subject:(over.length||1)+" booking taken overnight",
+    text:"A request came in through the website while the office was closed.\n\n"+
+         "It is already on the board in the first slot that was actually open, and the customer has "+
+         "a confirmation. Nothing needs re-typing — this note is a heads-up, not a task.",
+    want:"file", tpl:null });
+
+  return out.sort(function(a,b){ return a.h-b.h; });
+}
+
+var MSGS=feed();
+function byId(id){ return MSGS.filter(function(m){return m.id===id;})[0]||null; }
+
+/* ============================================================== templates */
+var TPL={
+  confirm:{ label:"Confirm the appointment", make:function(m){
+    var j=m.jobId?T.jobById(m.jobId):null;
+    return "Yes — you've got it right.\n\n"+
+      (j?("We have you down for "+j.date+" starting "+j.start+".\n\n"):"We have you on the board.\n\n")+
+      "You don't need to be home the whole time — just to let us in and to hear what we found. "+
+      "We take card, check or cash, and you'll get the invoice and the photos on your phone before we leave."; }},
+  hire:{ label:"Answer the new hire", make:function(m){
+    return "Glad you're joining us.\n\nBring your cards and we'll photograph them here — they go straight "+
+      "onto your record so nobody asks you for them again. Report to the shop at seven; you'll ride with "+
+      "one of our senior guys the first week, and your name will already be on a truck."; }},
+  signfollow:{ label:"Answer the price question", make:function(m){
+    return "Good question, and a fair one.\n\n"+
+      "The number on that page is the number. If we open it up and find something nobody could have "+
+      "seen from the outside, we stop, show you a photo, and you decide before anything else happens. "+
+      "You will never get a bigger bill than the one you agreed to without agreeing to it first."; }},
+  renew:{ label:"Renew the plan", make:function(m){
+    return "We'd love to keep you.\n\nThe plan is the same as last year, and it still carries your "+
+      "visits and your member pricing. I'll put the next visit on the books and send the renewal to "+
+      "your phone to sign — takes about ten seconds."; }},
+  callback:{ label:"Own the callback", make:function(m){
+    return "That's on us, and I'm sorry.\n\n"+
+      "I've put you back on today's board at no charge — it's covered under our workmanship warranty, "+
+      "so there is nothing for you to pay and nothing for you to argue about. "+
+      "We'll bring the photos from the first visit so we're not guessing twice."; }},
+  omw:{ label:"On my way", make:function(m){
+    return "We're on the way — should be about twenty minutes.\n\nYou'll get a text with the truck on it."; }},
+  invoice:{ label:"Invoice reminder", make:function(m){
+    return "Just a friendly nudge on the invoice from your last visit.\n\n"+
+      "You can pay it right from your portal — card or bank, whichever is easier. "+
+      "If something on it doesn't look right, tell me and I'll fix it before you pay a cent."; }}
+};
+
+/* ============================================================== the actions */
+function fileToRecords(m){
+  var cust=m.customerId?T.customerById(m.customerId):null;
+  var list=[]; try{ list=JSON.parse(localStorage.getItem(RKEY))||[]; }catch(e){}
+  list.unshift({ cab:m.kind==="permit"?"permits":(m.kind==="licence"?"licences":"correspondence"),
+    name:m.subject, kind:"mail", tag:m.kind,
+    who:(cust&&cust.name)||m.fromName, when:T.iso(T.TODAY),
+    note:"Filed from Mail"+(m.jobId?(" onto job "+m.jobId):"") });
+  try{ localStorage.setItem(RKEY,JSON.stringify(list)); }catch(e){}
+  act(m.id).filed=true; persist();
+}
+
+var FOLDER="inbox";
+
+function counts(){
+  var unread=0, need=0, filed=0;
+  MSGS.forEach(function(m){ var a=act(m.id);
+    if(!a.read) unread++;
+    if(m.want==="reply" && !a.replied) need++;
+    if(a.filed) filed++; });
+  return { inbox:MSGS.length, unread:unread, need:need, filed:filed, sent:ST.sent.length };
+}
+
+function inFolder(m){
+  var a=act(m.id);
+  if(FOLDER==="inbox") return true;
+  if(FOLDER==="need") return m.want==="reply" && !a.replied;
+  if(FOLDER==="filed") return !!a.filed;
+  return false;
+}
+
+var CUR=MSGS.length?MSGS[0].id:null;
+
+/* ================================================================ painting */
+c.appendChild(T.page("Mail",
+  "The shop's inbox. Every message here came off something real on your board — a booked call, a quote "+
+  "nobody answered, a part on the will-call shelf, a permit that never closed. Answer it, file it onto "+
+  "the job, or turn it into work."));
+
+var head=T.el('<div class="mb-rules"><span class="pill">Mail</span>'+
+  '<h3>An inbox that knows what a job is</h3>'+
+  '<p>Every message in here came from something that is true on your board right now — a call that '+
+  'got booked, a quote nobody answered, a part on the will-call shelf, a permit that never closed. '+
+  'Answer it, file it onto the job, or turn it into work. Nothing gets forwarded to anybody.</p>'+
+  '<ul><li>Anything from the building department files itself under <b>Permits</b>.</li>'+
+  '<li>Anything about a credential files under <b>Licences</b> and pokes the expiry watch.</li>'+
+  '<li>Everything else files onto the customer, so the next person sees it without asking you.</li></ul></div>');
+c.appendChild(head);
+
+var wrap=T.el('<div class="mb-wrap"></div>');
+var leftBox=T.el("<div></div>"), rightBox=T.el("<div></div>");
+wrap.appendChild(leftBox); wrap.appendChild(rightBox);
+c.appendChild(wrap);
+
+function paintList(){
+  leftBox.innerHTML="";
+  var n=counts();
+  var f=T.el('<div class="mb-folders"></div>');
+  [["inbox","Inbox",n.inbox],["need","Needs a reply",n.need],["filed","Filed",n.filed],["sent","Sent",n.sent]]
+    .forEach(function(p){
+      var b=T.el('<button'+(FOLDER===p[0]?' class="on"':'')+'>'+esc(p[1])+'<b>'+p[2]+'</b></button>');
+      b.onclick=function(){ FOLDER=p[0]; paint(); };
+      f.appendChild(b);
+    });
+  leftBox.appendChild(f);
+
+  var list=T.el('<div class="mb-list"></div>');
+
+  if(FOLDER==="sent"){
+    if(!ST.sent.length) list.appendChild(T.el('<div class="mb-empty">Nothing sent yet.</div>'));
+    ST.sent.slice().reverse().forEach(function(s){
+      list.appendChild(T.el('<div class="mb-row"><div class="mb-dot off"></div>'+
+        '<div class="mb-av sent">&#8594;</div>'+
+        '<div class="mb-body"><div class="mb-top"><span class="mb-from">'+esc(s.to)+
+        '</span><span class="mb-when">'+esc(s.when)+'</span></div>'+
+        '<div class="mb-subj">'+esc(s.subject)+'</div></div></div>'));
+    });
+    leftBox.appendChild(list);
+    return;
+  }
+
+  var rows=MSGS.filter(inFolder);
+  if(!rows.length) list.appendChild(T.el('<div class="mb-empty">Nothing here. That is the point.</div>'));
+
+  rows.forEach(function(m){
+    var a=act(m.id);
+    var job=m.jobId?T.jobById(m.jobId):null;
+    var chips="";
+    if(job) chips+='<span class="mb-chip job">'+esc(job.trade||"job")+'</span>';
+    if(m.want==="reply"&&!a.replied) chips+='<span class="mb-chip act">needs a reply</span>';
+    if(a.filed) chips+='<span class="mb-chip done">filed</span>';
+    if(a.replied) chips+='<span class="mb-chip done">answered</span>';
+    var r=T.el('<div class="mb-row'+(CUR===m.id?" on":"")+(a.read?"":" unread")+'">'+
+      '<div class="mb-dot'+(a.read?" off":"")+'"></div>'+
+      '<div class="mb-av '+m.tone+'">'+esc(String(m.fromName).charAt(0))+'</div>'+
+      '<div class="mb-body"><div class="mb-top"><span class="mb-from">'+esc(m.fromName)+'</span>'+
+      '<span class="mb-when">'+esc(ago(m.h))+'</span></div>'+
+      '<div class="mb-subj">'+esc(m.subject)+'</div>'+
+      (chips?'<div class="mb-chips">'+chips+'</div>':'')+'</div></div>');
+    r.onclick=function(){ CUR=m.id; act(m.id).read=true; persist(); paint(); };
+    list.appendChild(r);
+  });
+  leftBox.appendChild(list);
+}
+
+var COMPOSE=null;
+
+function paintReader(){
+  rightBox.innerHTML="";
+  if(FOLDER==="sent"){
+    var box0=T.card("");
+    box0.appendChild(T.el('<div class="mb-empty">Sent mail is threaded under the message it answered. '+
+      'Pick a folder on the left to get back to work.</div>'));
+    rightBox.appendChild(box0);
+    return;
+  }
+  var m=byId(CUR);
+  if(!m){ var e=T.card(""); e.appendChild(T.el('<div class="mb-empty">Pick a message.</div>'));
+    rightBox.appendChild(e); return; }
+
+  var a=act(m.id);
+  var cust=m.customerId?T.customerById(m.customerId):null;
+  var job=m.jobId?T.jobById(m.jobId):null;
+  var box=T.card("");
+
+  box.appendChild(T.el('<div class="mb-head">'+
+    '<div class="mb-av '+m.tone+'" style="width:44px;height:44px;font-size:16px">'+
+      esc(String(m.fromName).charAt(0))+'</div>'+
+    '<div style="min-width:0"><h2 class="mb-h-subj">'+esc(m.subject)+'</h2>'+
+    '<div class="mb-h-meta">'+esc(m.fromName)+' &lt;'+esc(m.from)+'&gt; · to '+esc(deskAddr())+
+    ' · '+esc(ago(m.h))+'</div></div></div>'));
+
+  var bel=T.el('<div class="mb-belongs"></div>');
+  bel.appendChild(T.el('<div><span class="k">Customer</span><span class="v">'+
+    esc(cust?cust.name:"— not a customer yet —")+'</span></div>'));
+  bel.appendChild(T.el('<div><span class="k">Job</span><span class="v">'+
+    (job?esc((job.trade||"")+" · "+(job.task||"")+" · "+job.date):"— none attached —")+'</span></div>'));
+  bel.appendChild(T.el('<div><span class="k">Files to</span><span class="v">'+
+    esc(m.kind==="permit"?"Permits":(m.kind==="licence"?"Licences":"Correspondence"))+'</span></div>'));
+  box.appendChild(bel);
+
+  box.appendChild(T.el('<div class="mb-text">'+esc(m.text)+'</div>'));
+
+  if(a.reply){
+    box.appendChild(T.el('<div class="mb-thread"><div class="t">You answered · '+esc(a.replyWhen||"")+
+      '</div><div class="mb-text" style="margin:0">'+esc(a.reply)+'</div></div>'));
+  }
+
+  var acts=T.el('<div class="mb-acts"></div>');
+
+  var rb=T.el('<button class="pri">'+(a.replied?"Answered &#10003;":"Reply")+'</button>');
+  rb.onclick=function(){ COMPOSE=(COMPOSE===m.id?null:m.id); paintReader(); };
+  acts.appendChild(rb);
+
+  var fb=T.el('<button>'+(a.filed?"Filed &#10003;":(job?"File it onto the job":"File it in Records"))+'</button>');
+  fb.disabled=!!a.filed;
+  fb.onclick=function(){
+    fileToRecords(m);
+    T.toast(job?("Filed onto the job and onto "+((cust&&cust.name)||"the customer")+".")
+               :"Filed in Records.","ok");
+    paint();
+  };
+  acts.appendChild(fb);
+
+  if(m.want==="job" || m.kind==="booking"){
+    var jb=T.el('<button>'+(a.booked?"On the board &#10003;":"Turn it into work")+'</button>');
+    jb.disabled=!!a.booked;
+    jb.onclick=function(){
+      var id=T.addJob({ customerId:(cust&&cust.id)||null,
+        task:m.kind==="permit"?"Close out the permit":(m.subject||"From an email"),
+        note:"Opened from Mail — "+m.fromName+", "+m.subject, hours:2, start:"13:00" });
+      act(m.id).booked=true; act(m.id).jobId=id; persist();
+      T.toast("On the board. Nobody re-typed the address.","ok");
+      paint();
+    };
+    acts.appendChild(jb);
+  }
+
+  box.appendChild(acts);
+
+  if(COMPOSE===m.id){
+    var comp=T.el('<div class="mb-comp"></div>');
+    comp.appendChild(T.el('<div class="hd">Reply</div>'));
+    comp.appendChild(T.el('<div class="fld"><label>To</label><input value="'+esc(m.from)+'"></div>'));
+    comp.appendChild(T.el('<div class="fld"><label>Subject</label><input value="Re: '+esc(m.subject)+'"></div>'));
+
+    var tpl=T.el('<div class="mb-tpl"></div>');
+    var ta=T.el('<textarea placeholder="Write it plain. They are not a computer person either."></textarea>');
+    var pre=m.tpl&&TPL[m.tpl]?TPL[m.tpl].make(m):"";
+    ta.value=(pre?pre:"")+signature();
+
+    Object.keys(TPL).forEach(function(k){
+      var b=T.el('<button>'+esc(TPL[k].label)+'</button>');
+      b.onclick=function(){ ta.value=TPL[k].make(m)+signature(); ta.focus(); };
+      tpl.appendChild(b);
+    });
+    comp.appendChild(tpl);
+    comp.appendChild(ta);
+
+    var ca=T.el('<div class="mb-acts" style="padding:12px 13px;margin:0;border-top:1px solid var(--line-2)"></div>');
+    var send=T.el('<button class="pri">Send it</button>');
+    send.onclick=function(){
+      var body=ta.value;
+      act(m.id).replied=true; act(m.id).reply=body; act(m.id).replyWhen=ago(0);
+      ST.sent.push({ to:m.fromName, subject:"Re: "+m.subject, when:ago(0), body:body });
+      persist();
+      COMPOSE=null;
+      T.toast("Sent, and threaded onto "+((cust&&cust.name)||"the message")+".","ok");
+      paint();
+    };
+    var cancel=T.el('<button>Not yet</button>');
+    cancel.onclick=function(){ COMPOSE=null; paintReader(); };
+    ca.appendChild(send); ca.appendChild(cancel);
+    comp.appendChild(ca);
+    box.appendChild(comp);
+  }
+
+  box.appendChild(T.el('<div class="mb-note">This mailbox is generated from your own book — the calls, '+
+    'the quotes, the parts, the permits and the plans that exist right now. Filing a message puts it on '+
+    'the customer and in the Records cabinet, so the next person who opens that job sees the whole '+
+    'conversation without anybody forwarding anything. Connecting your real mail provider is part of '+
+    'setup; nothing in this demo sends outside the machine.</div>'));
+
+  rightBox.appendChild(box);
+}
+
+function paint(){ paintList(); paintReader(); }
+paint();
+})();
+</script>
+</body>
+</html>
