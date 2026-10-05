@@ -1842,7 +1842,7 @@
   ];
 
   function tier(){ return db().tier||"grandsuite"; }
-  var BUILD_VER = "V3.1";
+  var BUILD_VER = "V4.0";
   /* Owner tool gate. The customer sees three sizes and nothing else.
      Anthony and Barry turn the room switches on with ?owner=1 and off with ?owner=0;
      the choice sticks in this browser until it is turned back off. */
