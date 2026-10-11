@@ -2019,7 +2019,7 @@
     ' — this is the real operating system, not a slideshow. Type anywhere; it saves in your browser. '+
     'The shop, techs and customers below are a realistic sample book. '+
     '<a href="javascript:void(0)" id="resetFloor">Start with a clean slate</a></div>'); }
-  function footer(){ return el('<div class="ae-credit"><a href="https://www.aexperiences.com/" class="ae-triad" aria-label="AETRIAD Powered - Accelerated Experiences LLC"><img src="/marks/aetriad-powered.png" alt="AETRIAD Powered" style="height:30px;width:auto;vertical-align:middle"></a><br>Toolbelt OS is a '+
+  function footer(){ return el('<div class="ae-credit"><a href="https://www.aexperiences.com/" class="ae-triad" aria-label="AETRIAD Powered - Accelerated Experiences LLC"><img src="/marks/aos/aos-business.png" alt="Accelerated Operating Systems" style="height:30px;width:auto;vertical-align:middle"></a><br>Toolbelt OS is a '+
     'white-label build. Sample data is a fictional shop. Benchmarks are sourced or shown blank — never invented. '+
     'Nothing here is legal, tax or code-compliance advice.</div>'); }
   function toast(m,k){ var w=document.getElementById("toast-wrap"); if(!w) return;
@@ -2399,3 +2399,24 @@
   else boot();
 
 })(window);
+
+/* BIRDSEYE:BEGIN — added by machines/birdseye/convert.py. Wraps Toolbelt.mount() so every page gets the
+   Birdseye shell (header, floor plan, dock, More sheet, helper tab). Legacy functions are untouched.
+   To undo: `python3 convert.py undo <repo>` (or delete from BEGIN to END). */
+(function () {
+  var G = window["Toolbelt"]; if (!G || typeof G.mount !== 'function' || G.__birdseye) return; G.__birdseye = true;
+  var me = document.currentScript, base = me && me.src ? me.src.replace(/[^\/]*(\?.*)?$/, '') : '';
+  var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = base + 'birdseye/birdseye.css'; document.head.appendChild(l);
+  var ready = false, queue = [];
+  function load(src, cb) { var s = document.createElement('script'); s.src = src; s.onload = cb; s.onerror = cb; document.head.appendChild(s); }
+  load(base + 'birdseye/birdseye-shell.js', function () { load(base + 'birdseye.config.js', function () { ready = true; queue.splice(0).forEach(function (f) { f(); }); }); });
+  var legacyMount = G.mount;
+  G.mount = function (o) {
+    document.documentElement.classList.add('bs-on', 'bs-pending');
+    var c = legacyMount.apply(this, arguments);
+    function go() { try { if (window.BirdseyeShell && window.BIRDSEYE) window.BirdseyeShell.adopt({ config: window.BIRDSEYE, active: o && o.active, content: c }); } catch (e) { if (window.console) console.error('[birdseye]', e); } document.documentElement.classList.remove('bs-pending'); }
+    if (ready) go(); else queue.push(go);
+    return c;
+  };
+})();
+/* BIRDSEYE:END */
