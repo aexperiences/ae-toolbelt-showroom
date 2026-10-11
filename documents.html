@@ -277,18 +277,18 @@ var TEMPLATES=[
 
 var SEEDDOCS=[
   {id:"d1",kind:"doc",cab:"contracts",name:"Replacement proposal — Brackett residence",
-   when:"2026-07-26",who:owner,filed:true,
+   when:(window.AOS_SHIFT||String)("2026-07-26"),who:owner,filed:true,
    body:"<h1>Replacement proposal</h1><p>Prepared for <b>Brackett residence</b> by "+esc(shop.name||"Selkirk Mechanical")+".</p>"+
         "<h2>What we found</h2><p>Compressor drawing locked-rotor amps on start. Unit is fourteen years old and the coil is original.</p>"+
         "<h2>What we recommend</h2><ul><li>Repair the compressor and keep the coil</li><li>Replace the condenser and the coil together</li><li>Replace the system and add the variable-speed air handler</li></ul>"+
         "<h2>What it costs</h2><p>Pricing carried over from estimate EST-1184. Nothing was retyped.</p>"},
   {id:"d2",kind:"doc",cab:"insurance",name:"Tailgate safety meeting — ladder set-up",
-   when:"2026-07-27",who:owner,filed:true,
+   when:(window.AOS_SHIFT||String)("2026-07-27"),who:owner,filed:true,
    body:"<h1>Tailgate safety meeting</h1><p>Date: 2026-07-27 · Led by: "+esc(owner)+"</p>"+
         "<h2>Topic</h2><p>Ladder set-up on frozen ground.</p>"+
         "<h2>Discussed</h2><ul><li>Four-to-one rule</li><li>Tie off at the top, every time</li><li>Nobody sets a ladder alone in ice</li></ul>"},
   {id:"d3",kind:"sheet",cab:"money",name:"Flat-rate price sheet — 2026 revision",
-   when:"2026-03-02",who:owner,filed:true,
+   when:(window.AOS_SHIFT||String)("2026-03-02"),who:owner,filed:true,
    rows:[["Code","Task","Trade","Hours","Price"],
          ["HV-101","Condenser fan motor — replace","HVAC","1.5","428"],
          ["HV-118","Capacitor — replace","HVAC","0.5","189"],

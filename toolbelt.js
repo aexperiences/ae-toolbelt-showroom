@@ -26,7 +26,33 @@
   var STORE = (function(){ try{ localStorage.setItem('_t','1'); localStorage.removeItem('_t'); return localStorage; }catch(e){ return sessionStorage; } })();
   /* LOCAL noon — a UTC-midnight date reads as the previous day west of Greenwich,
      and a dispatch board off by one day is worse than no dispatch board. */
-  var TODAY = new Date("2026-07-27T12:00:00");
+  /* TODAY IS THE REAL TODAY. The sample book was written as the week of Sun Jul 26 2026, seen on Monday the 27th (PIN).
+     Its week is laid onto the current week: every literal date moves by the same whole number of weeks (SHIFT), so
+     each job, visit or class keeps its weekday and "due Wednesday", "three days over" and "this week" read as
+     designed; dates computed from TODAY already follow it. A book saved in an earlier week is moved the same way
+     when it loads (rebase), so a returning visitor's story stays intact. Holidays and birthdays stay put.
+     On a Monday the showroom reads exactly as written; on a day the business is closed, today is quiet. */
+  var PIN = new Date("2026-07-27T12:00:00");
+  var TODAY = (function(){ var n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate(), 12, 0, 0); })();
+  function iso10(d){ return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function weekSunday(d){ var x = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12); x.setDate(x.getDate() - x.getDay()); return x; }
+  function weeksBetween(a, b){ return Math.round((weekSunday(b) - weekSunday(a)) / 604800000); }
+  var SHIFT_DAYS = 7 * weeksBetween(PIN, TODAY);
+  function SHIFT(s, n){ n = n === undefined ? SHIFT_DAYS : n; if (!n || typeof s !== "string") return s;
+    var m = /^(\d{4})-(\d{2})-(\d{2})(.*)$/.exec(s); if (!m) return s;
+    var d = new Date(+m[1], +m[2] - 1, +m[3], 12); d.setDate(d.getDate() + n); return iso10(d) + m[4]; }
+  function rebase(o, n){
+    if (Array.isArray(o)) { for (var i = 0; i < o.length; i++) o[i] = rebase(o[i], n); return o; }
+    if (o && typeof o === "object") { Object.keys(o).forEach(function (k) { if (k !== "holidays" && k !== "dob" && k !== "born") o[k] = rebase(o[k], n); }); return o; }
+    return typeof o === "string" && /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?)?$/.test(o) ? SHIFT(o, n) : o; }
+  window.AOS_SHIFT = SHIFT;
+  var __read0 = read, __write0 = write, THIS_WEEK = iso10(weekSunday(TODAY));
+  read = function () { var d = __read0(); if (d && d._wk !== THIS_WEEK) {
+      var n = 7 * weeksBetween(d._wk ? new Date(d._wk + "T12:00:00") : PIN, TODAY);
+      if (n) rebase(d, n); d._wk = THIS_WEEK; delete d._day;
+      try { (typeof STORE !== "undefined" ? STORE : localStorage).setItem(KEY, JSON.stringify(d)); } catch (e) {} }
+    return d; };
+  write = function (d) { if (d && !d._wk) d._wk = THIS_WEEK; return __write0.apply(this, arguments); };
 
   function now(){ return Date.now(); }
   function iso(d){ var m=d.getMonth()+1, day=d.getDate();
@@ -217,25 +243,25 @@
      vehicle-level telemetry hardware is wired per buyer at purchase. */
   SEED.trucks = [
     { id:"v1", label:"Truck 1", techId:"t1", plate:"ID 4B–7719", unit:"2021 Ford Transit 250",
-      odo:78412, serviceEveryMi:5000, lastServiceMi:75190, lastServiceOn:"2026-06-18",
+      odo:78412, serviceEveryMi:5000, lastServiceMi:75190, lastServiceOn:SHIFT("2026-06-18"),
       ping:{ lat:47.7212, lng:-116.9331, at:"08:56", mph:0, heading:"parked", battery:82 } },
     { id:"v2", label:"Truck 2", techId:"t2", plate:"ID 7K–2204", unit:"2019 RAM ProMaster 1500",
-      odo:104880, serviceEveryMi:5000, lastServiceMi:99400, lastServiceOn:"2026-04-02",
+      odo:104880, serviceEveryMi:5000, lastServiceMi:99400, lastServiceOn:SHIFT("2026-04-02"),
       ping:{ lat:47.6931, lng:-116.7842, at:"08:58", mph:0, heading:"parked", battery:61 } },
     { id:"v3", label:"Truck 3", techId:"t3", plate:"ID 2C–5581", unit:"2022 Chevrolet Express 2500",
-      odo:41067, serviceEveryMi:5000, lastServiceMi:39900, lastServiceOn:"2026-07-09",
+      odo:41067, serviceEveryMi:5000, lastServiceMi:39900, lastServiceOn:SHIFT("2026-07-09"),
       ping:{ lat:47.7604, lng:-116.7913, at:"08:57", mph:0, heading:"on site", battery:44 } },
     { id:"v4", label:"Truck 4", techId:"t4", plate:"ID 9J–1043", unit:"2020 Ford Transit 350",
-      odo:66240, serviceEveryMi:5000, lastServiceMi:62110, lastServiceOn:"2026-05-21",
+      odo:66240, serviceEveryMi:5000, lastServiceMi:62110, lastServiceOn:SHIFT("2026-05-21"),
       ping:{ lat:47.7803, lng:-117.0102, at:"08:41", mph:0, heading:"parked", battery:19 } },
     { id:"v5", label:"Truck 5", techId:"t5", plate:"ID 5N–8827", unit:"2018 Nissan NV2500",
-      odo:132904, serviceEveryMi:5000, lastServiceMi:132010, lastServiceOn:"2026-07-28",
+      odo:132904, serviceEveryMi:5000, lastServiceMi:132010, lastServiceOn:SHIFT("2026-07-28"),
       ping:{ lat:47.8104, lng:-116.8938, at:"08:59", mph:41, heading:"S", battery:73 } },
     { id:"v6", label:"Truck 6", techId:"t6", plate:"ID 6R–3390", unit:"2021 RAM ProMaster 2500",
-      odo:58733, serviceEveryMi:5000, lastServiceMi:54020, lastServiceOn:"2026-06-30",
+      odo:58733, serviceEveryMi:5000, lastServiceMi:54020, lastServiceOn:SHIFT("2026-06-30"),
       ping:{ lat:47.6742, lng:-116.7661, at:"08:55", mph:0, heading:"parked", battery:88 } },
     { id:"v7", label:"Truck 7", techId:"t7", plate:"ID 8W–6612", unit:"2023 Ford Transit 250",
-      odo:19488, serviceEveryMi:5000, lastServiceMi:15100, lastServiceOn:"2026-07-15",
+      odo:19488, serviceEveryMi:5000, lastServiceMi:15100, lastServiceOn:SHIFT("2026-07-15"),
       ping:{ lat:47.6958, lng:-116.7791, at:"08:58", mph:0, heading:"parked", battery:57 } }
   ];
 
@@ -257,98 +283,98 @@
   /* Memberships carry the state a plan needs that a customer record does not:
      what has been used, when it renews, and whether it renews itself. */
   SEED.memberships = [
-    { id:"m1", customerId:"c1",  planId:"cc",  since:"2021-04-02", annual:398,  visitsYr:2,
-      visitsUsed:1, lastVisit:"2026-07-27", renewsOn:"2026-08-14", autoRenew:true,  billing:"Annual", status:"Active" },
-    { id:"m2", customerId:"c2",  planId:"pri", since:"2022-02-18", annual:7200, visitsYr:12,
-      visitsUsed:7, lastVisit:"2026-07-20", renewsOn:"2027-02-18", autoRenew:true,  billing:"Monthly", status:"Active" },
-    { id:"m3", customerId:"c4",  planId:"pri", since:"2023-06-05", annual:2400, visitsYr:4,
-      visitsUsed:2, lastVisit:"2026-06-11", renewsOn:"2026-09-05", autoRenew:true,  billing:"Monthly", status:"Active" },
-    { id:"m4", customerId:"c5",  planId:"cc",  since:"2020-09-30", annual:398,  visitsYr:2,
-      visitsUsed:2, lastVisit:"2026-07-27", renewsOn:"2026-08-09", autoRenew:false, billing:"Annual", status:"Active" },
-    { id:"m5", customerId:"c8",  planId:"pri", since:"2021-11-12", annual:3600, visitsYr:6,
-      visitsUsed:3, lastVisit:"2026-07-25", renewsOn:"2026-11-12", autoRenew:true,  billing:"Monthly", status:"Active" },
-    { id:"m6", customerId:"c9",  planId:"cc",  since:"2019-05-21", annual:398,  visitsYr:2,
-      visitsUsed:0, lastVisit:"2026-02-14", renewsOn:"2026-08-21", autoRenew:true,  billing:"Annual", status:"Active" }
+    { id:"m1", customerId:"c1",  planId:"cc",  since:SHIFT("2021-04-02"), annual:398,  visitsYr:2,
+      visitsUsed:1, lastVisit:SHIFT("2026-07-27"), renewsOn:SHIFT("2026-08-14"), autoRenew:true,  billing:"Annual", status:"Active" },
+    { id:"m2", customerId:"c2",  planId:"pri", since:SHIFT("2022-02-18"), annual:7200, visitsYr:12,
+      visitsUsed:7, lastVisit:SHIFT("2026-07-20"), renewsOn:SHIFT("2027-02-18"), autoRenew:true,  billing:"Monthly", status:"Active" },
+    { id:"m3", customerId:"c4",  planId:"pri", since:SHIFT("2023-06-05"), annual:2400, visitsYr:4,
+      visitsUsed:2, lastVisit:SHIFT("2026-06-11"), renewsOn:SHIFT("2026-09-05"), autoRenew:true,  billing:"Monthly", status:"Active" },
+    { id:"m4", customerId:"c5",  planId:"cc",  since:SHIFT("2020-09-30"), annual:398,  visitsYr:2,
+      visitsUsed:2, lastVisit:SHIFT("2026-07-27"), renewsOn:SHIFT("2026-08-09"), autoRenew:false, billing:"Annual", status:"Active" },
+    { id:"m5", customerId:"c8",  planId:"pri", since:SHIFT("2021-11-12"), annual:3600, visitsYr:6,
+      visitsUsed:3, lastVisit:SHIFT("2026-07-25"), renewsOn:SHIFT("2026-11-12"), autoRenew:true,  billing:"Monthly", status:"Active" },
+    { id:"m6", customerId:"c9",  planId:"cc",  since:SHIFT("2019-05-21"), annual:398,  visitsYr:2,
+      visitsUsed:0, lastVisit:SHIFT("2026-02-14"), renewsOn:SHIFT("2026-08-21"), autoRenew:true,  billing:"Annual", status:"Active" }
   ];
 
   SEED.techs = [
     { id:"t1", name:"Wade Fillmore", trade:"HVAC", phone:"(208) 555-0181", city:"Post Falls",
-      lat:47.7150, lng:-116.9400, hired:"2019-03-11", payRate:38.00, status:"Active", rating:4.9,
+      lat:47.7150, lng:-116.9400, hired:SHIFT("2019-03-11"), payRate:38.00, status:"Active", rating:4.9,
       truck:"Truck 1", skills:["Heat pump","Ductless mini-split","Commercial rooftop","Attic comfortable"],
       lic:{ "Driver's licence":licOn(26), "Insurance / MVR":licOn(8), "OSHA 10":licOn(14),
             "EPA 608 Universal":"complete", "NATE certification":licOn(19) } },
     { id:"t2", name:"Marisela Ochoa", trade:"Plumbing", phone:"(208) 555-0182", city:"Coeur d'Alene",
-      lat:47.6880, lng:-116.7800, hired:"2020-07-06", payRate:36.50, status:"Active", rating:4.8,
+      lat:47.6880, lng:-116.7800, hired:SHIFT("2020-07-06"), payRate:36.50, status:"Active", rating:4.8,
       truck:"Truck 2", skills:["Tankless water heater","Sewer camera","Crawlspace comfortable"],
       lic:{ "Driver's licence":licOn(31), "Insurance / MVR":licOn(4), "OSHA 10":licOn(9),
             "Journeyman plumber":licOn(16), "Gas fitter":licOn(11), "Backflow tester":licOn(2) } },
     { id:"t3", name:"Curtis Vandeveer", trade:"Electrical", phone:"(208) 555-0183", city:"Hayden",
-      lat:47.7660, lng:-116.7866, hired:"2018-01-22", payRate:41.00, status:"Active", rating:5.0,
+      lat:47.7660, lng:-116.7866, hired:SHIFT("2018-01-22"), payRate:41.00, status:"Active", rating:5.0,
       truck:"Truck 3", skills:["Panel upgrade","EV charger","Generator"],
       lic:{ "Driver's licence":licOn(22), "Insurance / MVR":licOn(10), "OSHA 10":licOn(6),
             "Journeyman electrician":licOn(13), "Master electrician":licOn(13) } },
     { id:"t4", name:"Booker Reyes", trade:"HVAC", phone:"(208) 555-0184", city:"Post Falls",
-      lat:47.7220, lng:-116.9410, hired:"2022-05-16", payRate:32.00, status:"Active", rating:4.6,
+      lat:47.7220, lng:-116.9410, hired:SHIFT("2022-05-16"), payRate:32.00, status:"Active", rating:4.6,
       truck:"Truck 4", skills:["Heat pump","Boiler","Crawlspace comfortable"],
       lic:{ "Driver's licence":licOn(28), "Insurance / MVR":licOn(7), "OSHA 10":licOn(-1),
             "EPA 608 Universal":"complete" } },
     { id:"t5", name:"Junie Halloran", trade:"Plumbing", phone:"(208) 555-0185", city:"Rathdrum",
-      lat:47.8121, lng:-116.8960, hired:"2021-09-13", payRate:34.50, status:"Active", rating:4.7,
+      lat:47.8121, lng:-116.8960, hired:SHIFT("2021-09-13"), payRate:34.50, status:"Active", rating:4.7,
       truck:"Truck 5", skills:["Hydro-jet","Sewer camera","Well pump","Septic"],
       lic:{ "Driver's licence":licOn(18), "Insurance / MVR":licOn(12), "OSHA 10":licOn(20),
             "Journeyman plumber":licOn(5) } },
     { id:"t6", name:"Desmond Achterberg", trade:"Drain", phone:"(208) 555-0186", city:"Coeur d'Alene",
-      lat:47.6720, lng:-116.7640, hired:"2024-02-19", payRate:28.00, status:"Active", rating:4.4,
+      lat:47.6720, lng:-116.7640, hired:SHIFT("2024-02-19"), payRate:28.00, status:"Active", rating:4.4,
       truck:"Truck 6", skills:["Hydro-jet","Sewer camera","Crawlspace comfortable"],
       lic:{ "Driver's licence":licOn(33), "Insurance / MVR":licOn(6), "OSHA 10":licOn(11) } },
     { id:"t7", name:"Priya Ranganathan", trade:"Electrical", phone:"(208) 555-0187", city:"Coeur d'Alene",
-      lat:47.6930, lng:-116.7770, hired:"2023-06-05", payRate:35.00, status:"Active", rating:4.8,
+      lat:47.6930, lng:-116.7770, hired:SHIFT("2023-06-05"), payRate:35.00, status:"Active", rating:4.8,
       truck:"Truck 7", skills:["EV charger","Panel upgrade","Attic comfortable"],
       lic:{ "Driver's licence":licOn(24), "Insurance / MVR":licOn(9), "OSHA 10":licOn(15),
             "Journeyman electrician":licOn(1) } },
     { id:"t8", name:"Toby Lindquist", trade:"HVAC", phone:"(208) 555-0188", city:"Hayden",
-      lat:47.7490, lng:-116.7720, hired:"2026-06-01", payRate:24.00, status:"Apprentice", rating:null,
+      lat:47.7490, lng:-116.7720, hired:SHIFT("2026-06-01"), payRate:24.00, status:"Apprentice", rating:null,
       truck:"rides along", skills:["Attic comfortable"],
       lic:{ "Driver's licence":licOn(29), "Insurance / MVR":licOn(5), "OSHA 10":licOn(17) } }
   ];
 
   SEED.customers = [
     { id:"c1", name:"Bev Trawick", kind:"Residential", city:"Coeur d'Alene", lat:47.6890, lng:-116.7710,
-      addr:"812 Lakeshore Dr", phone:"(208) 555-0201", since:"2021-04-02",
+      addr:"812 Lakeshore Dr", phone:"(208) 555-0201", since:SHIFT("2021-04-02"),
       equip:"Carrier 3-ton heat pump, 2019 · 50 gal gas water heater",
       agreement:"Comfort Club — 2 visits/yr", agreementAnnual:398, visitsYr:2, notes:"Two dogs. Gate code 4417." },
     { id:"c2", name:"Riverbend Apartments", kind:"Property manager", city:"Post Falls", lat:47.7100, lng:-116.9420,
-      addr:"4400 Riverbend Ave", phone:"(208) 555-0202", since:"2019-08-15",
+      addr:"4400 Riverbend Ave", phone:"(208) 555-0202", since:SHIFT("2019-08-15"),
       equip:"48 units · package units on 6 buildings", agreement:"Priority commercial", agreementAnnual:7200, visitsYr:12,
       notes:"Bill to Coeur Property Group. PO required over $500." },
     { id:"c3", name:"Hal Bergstrom", kind:"Residential", city:"Hayden", lat:47.7620, lng:-116.7690,
-      addr:"1129 Honeysuckle", phone:"(208) 555-0203", since:"2023-11-30",
+      addr:"1129 Honeysuckle", phone:"(208) 555-0203", since:SHIFT("2023-11-30"),
       equip:"Lennox 96% furnace, 2023 (under mfr warranty) · A/O Smith tankless",
       agreement:"none", notes:"Installed by us — furnace still under manufacturer parts warranty." },
     { id:"c4", name:"Cedar Ridge Dental", kind:"Commercial", city:"Coeur d'Alene", lat:47.6790, lng:-116.7960,
-      addr:"2200 Ironwood Dr", phone:"(208) 555-0204", since:"2020-02-11",
+      addr:"2200 Ironwood Dr", phone:"(208) 555-0204", since:SHIFT("2020-02-11"),
       equip:"2 rooftop units · medical gas · compressor", agreement:"Priority commercial", agreementAnnual:2400, visitsYr:4,
       notes:"Cannot lose cooling during patient hours. After-hours preferred." },
     { id:"c5", name:"Norma Pyle", kind:"Residential", city:"Rathdrum", lat:47.8090, lng:-116.8920,
-      addr:"305 Mill St", phone:"(208) 555-0205", since:"2018-06-21",
+      addr:"305 Mill St", phone:"(208) 555-0205", since:SHIFT("2018-06-21"),
       equip:"Well pump · 200A panel, 1978", agreement:"Comfort Club — 2 visits/yr", agreementAnnual:398, visitsYr:2,
       notes:"Elderly, hard of hearing. Call before arriving, then knock loudly." },
     { id:"c6", name:"Fairmount Builders", kind:"General contractor", city:"Post Falls", lat:47.7240, lng:-116.9280,
-      addr:"c/o site — Prairie Crossing Ph 2", phone:"(208) 555-0206", since:"2022-01-10",
+      addr:"c/o site — Prairie Crossing Ph 2", phone:"(208) 555-0206", since:SHIFT("2022-01-10"),
       equip:"14 spec homes in progress", agreement:"Contract — schedule of values",
       notes:"Draws on the 10th. Rough-in inspections Tuesdays." },
     { id:"c7", name:"Sal Whitcomb", kind:"Residential", city:"Post Falls", lat:47.7150, lng:-116.9600,
-      addr:"77 Seltice Way", phone:"(208) 555-0207", since:"2026-05-19",
+      addr:"77 Seltice Way", phone:"(208) 555-0207", since:SHIFT("2026-05-19"),
       equip:"Sewer line — clay, 1962", agreement:"none", notes:"Recurring root intrusion. Sold on a liner, not scheduled." },
     { id:"c8", name:"Lakeside Grill", kind:"Commercial", city:"Coeur d'Alene", lat:47.6650, lng:-116.7820,
-      addr:"18 Sherman Ave", phone:"(208) 555-0208", since:"2021-09-08",
+      addr:"18 Sherman Ave", phone:"(208) 555-0208", since:SHIFT("2021-09-08"),
       equip:"Walk-in cooler · ice machine · 3-comp sink", agreement:"Priority commercial", agreementAnnual:3600, visitsYr:6,
       notes:"Health inspection sensitive. Cooler down = closed." },
     { id:"c9", name:"Dot Kilbride", kind:"Residential", city:"Hayden", lat:47.7710, lng:-116.7950,
-      addr:"640 Government Way", phone:"(208) 555-0209", since:"2024-03-14",
+      addr:"640 Government Way", phone:"(208) 555-0209", since:SHIFT("2024-03-14"),
       equip:"Ductless mini-split x3, 2024", agreement:"Comfort Club — 2 visits/yr", agreementAnnual:398, visitsYr:2, notes:"" },
     { id:"c10", name:"Owen Brackett", kind:"Residential", city:"Coeur d'Alene", lat:47.6640, lng:-116.7960,
-      addr:"91 Fernan Hill Rd", phone:"(208) 555-0210", since:"2025-10-02",
+      addr:"91 Fernan Hill Rd", phone:"(208) 555-0210", since:SHIFT("2025-10-02"),
       equip:"Boiler, 1998 · 100A panel", agreement:"none", notes:"Wants a panel upgrade quote." }
   ];
 
