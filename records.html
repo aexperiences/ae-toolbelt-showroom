@@ -44,7 +44,7 @@
 (function () {
   var T=window.Toolbelt;
   var c=T.mount({active:"records.html",crumb:"Records"});
-  var KEY="toolbelt_records_v1";
+  var KEY="toolbelt_records_v2";
 
   /* The filing plan — one cabinet per real thing the firm keeps. */
   var CABINETS=[
@@ -58,17 +58,19 @@
     {k:"money",ic:"💵",name:"Money",desc:"Price book, supplier agreements, invoices, tax filings."}
   ];
 
-  /* Seeded records — real McArthur artifacts where they exist, honestly labeled. */
-  var SEED=[
-    {cab:"permits",name:"Permit PF-2026-1482 — Brackett 200A service",kind:"pdf",tag:"sot",who:"Dale Kirby",when:"2026-07-24",note:""},
-    {cab:"licences",name:"Journeyman electrician card — P. Ranganathan",kind:"pdf",tag:"sot",who:"Dale Kirby",when:"2026-07-01",note:"Expires in 30 days"},
-    {cab:"licences",name:"OSHA 10 card — B. Reyes",kind:"pdf",tag:"",who:"Dale Kirby",when:"2025-06-14",note:"EXPIRED"},
-    {cab:"contracts",name:"Fairmount Builders — Prairie Crossing Ph 2",kind:"pdf",tag:"sot",who:"Dale Kirby",when:"2026-01-15",note:""},
-    {cab:"warranty",name:"Callback root cause — Lakeside Grill braze joint",kind:"pdf",tag:"",who:"Ivy Sandoval",when:"2026-07-28",note:""},
-    {cab:"equipment",name:"Equipment register — all service customers",kind:"csv",tag:"sot",who:"Ivy Sandoval",when:"2026-07-20",note:""},
-    {cab:"insurance",name:"Certificate of insurance — 2026",kind:"pdf",tag:"sot",who:"Dale Kirby",when:"2026-01-08",note:""},
-    {cab:"money",name:"Flat-rate price book — 2026 revision",kind:"xls",tag:"sot",who:"Dale Kirby",when:"2026-03-02",note:""}
-  ];
+  /* Seeded records — built from this system's own book (its people, jobs and paperwork), never typed in. */
+  var SEED=(function(){ var D={}; try{ D=T.db()||{}; }catch(e){} var out=[], today=((T.TODAY instanceof Date)?T.TODAY:new Date()).toISOString().slice(0,10);
+    function add(cab,name,kind,tag,who,when,note){ if(name) out.push({cab:cab,name:String(name),kind:kind||"pdf",tag:tag||"",who:who||"",when:when||"",note:note||""}); }
+    function exp(d){ return !d||!/^\d{4}-/.test(d)?"":(d<today?"EXPIRED":"Expires "+d); }
+    try{ var O=(D.shop||{}).owner||"", C={}, TN={}; (D.customers||[]).forEach(function(c){C[c.id]=c.name;}); (D.techs||[]).forEach(function(t){TN[t.id]=t.name;});
+      (D.jobs||[]).filter(function(j){return j.permitNo;}).forEach(function(j){ add("permits","Permit "+j.permitNo+" — "+(C[j.customerId]||"")+" · "+j.task,"pdf","sot",TN[j.techId],j.date,j.status); });
+      (D.techs||[]).forEach(function(t){ Object.keys(t.lic||{}).forEach(function(k){ var d=t.lic[k], e=exp(d); add("licences",k+" — "+t.name,"pdf",e==="EXPIRED"?"":"sot",O,/^\d{4}-/.test(d)?d:"",e||d); }); });
+      (D.memberships||[]).forEach(function(m){ add("contracts","Maintenance agreement — "+(C[m.customerId]||""),"pdf",m.status==="Active"?"sot":"",O,m.since,"Renews "+m.renewsOn); });
+      (D.jobs||[]).filter(function(j){return /callback/i.test(j.type+" "+j.billing);}).forEach(function(j){ add("warranty","Callback — "+(C[j.customerId]||"")+" · "+j.task,"pdf","",TN[j.techId],j.date,j.note); });
+      (D.customers||[]).filter(function(c){return c.equip;}).forEach(function(c){ add("equipment","Equipment record — "+c.name,"pdf","sot",O,c.since,c.equip); });
+      (D.documents||[]).forEach(function(d){ add(/employ/i.test(d.title)?"employment":"contracts",d.title+" — "+d.subject,"pdf",d.status==="Signed"?"sot":"",O,d.created,d.status); });
+      (D.estimates||[]).forEach(function(e){ add("money","Estimate — "+(C[e.customerId]||"")+" · "+e.title,"pdf",e.stage==="Won"?"sot":"",O,e.requested,e.stage); }); }catch(e){}
+    return out; })();
 
   function load(){ try{ var d=JSON.parse(sessionStorage.getItem(KEY)); if(d&&d.length) return d; }catch(e){} return SEED.slice(); }
   function persist(){ try{ sessionStorage.setItem(KEY,JSON.stringify(FILES)); }catch(e){} }

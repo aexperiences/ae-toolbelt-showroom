@@ -78,13 +78,13 @@
   var T=window.Toolbelt;
   var c=T.mount({active:"connect.html",crumb:"Connect"});
   var API=window.TOOLBELT_API+'/api/connect'; var NS='toolbelt';
-  var TEAM=[
-    {slug:"dale",name:"Dale Kirby",role:"Owner",init:"DK"},
-    {slug:"ivy",name:"Ivy Sandoval",role:"Dispatch",init:"IS"},
-    {slug:"wade",name:"Wade Fillmore",role:"Lead HVAC Tech",init:"WF"},
-    {slug:"marisela",name:"Marisela Ochoa",role:"Lead Plumber",init:"MO"},
-    {slug:"curtis",name:"Curtis Vandeveer",role:"Master Electrician",init:"CV"}
-  ];
+  /* The team — read from this system's own seeded people, never typed in here. */
+  var TEAM=(function(){ var D={}; try{ D=T.db()||{}; }catch(e){} var out=[], seen={};
+    function add(n,r){ n=String(n||"").trim(); if(!n||seen[n]) return; seen[n]=1;
+      var w=n.replace(/^Coach\s+/,"").replace(/,.*$/,"").split(/\s+/);
+      out.push({slug:n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""),name:n,role:String(r||""),init:(((w[0]||"")[0]||"")+(w.length>1?w[w.length-1][0]:((w[0]||"")[1]||""))).toUpperCase()}); }
+    try{ var o=D.shop||{}; add(o.owner,"Owner"); (D.techs||[]).forEach(function(t){ if(t.status!=="Inactive") add(t.name,t.trade+" tech"); }); }catch(e){}
+    return out; })();
   var CHANNELS=[
     {ch:"shop",name:"#shop",desc:"Whatever the shop needs to see."},
     {ch:"field",name:"#field",desc:"Techs on the road — coverage, call-outs, parts runs."},
