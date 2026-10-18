@@ -1850,6 +1850,7 @@
     { group:"The Trucks", items:[
       { href:"licences.html",  label:"Licences",        ic:"⛨", room:"licences", accent:"licence" , icon:"icons/law.svg"},
       { href:"truck.html",     label:"Truck Stock",     ic:"▣", room:"truck",    accent:"ops", icon:"icons/truck-stock.svg" },
+      { href:"aimos.html",     label:"Shop Stockroom",  ic:"▦", accent:"ops", icon:"icons/aimos-supplies.svg" },
       { href:"fleetview.html",label:"FleetView · Trucks",ic:"◍", room:"fleet",  accent:"dispatch", icon:"icons/fleetview.svg" } ]},
     { group:"Growth", items:[
       { href:"estimates.html", label:"Estimates",       ic:"✦", room:"estimate", accent:"estimate" , icon:"icons/funnel.svg"},
