@@ -6,7 +6,7 @@
   window.BIRDSEYE = {
     id: "toolbelt", engine: "Toolbelt", routing: "multipage", home: "dashboard.html",
     trade: "Trades service contractor (HVAC, plumbing, electrical, drain) — dispatch, field crews, trucks",
-    brand: {"name": "Toolbelt OS", "short": "Toolbelt", "iconFile": "Toolbelt_OS.png", "version": "V. Birdseye 1.0", "line": "Mothership", "icon": "birdseye/os-icon.png", "aos": "birdseye/marks/aos-business.png", "aeMark": "birdseye/marks/ae-mark.png", "store": "https://aexperiences.studio/store.html"},
+    brand: {"name": "Toolbelt OS", "short": "Toolbelt", "iconFile": "Toolbelt_OS.png", "version": "V. Birdseye 1.0", "line": "Mothership", "icon": "birdseye/os-icon.png", "aos": "birdseye/marks/aos-business.png", "aeMark": "birdseye/marks/ae-mark.png", "birdseyeIcon": "birdseye/marks/birdseye.png", "store": "https://aexperiences.studio/store.html"},
     houseNoun: "shop",
     houseName: function(E,D,H,S){ return (D.shop.dba || D.shop.name); },
     today: function(E,D,H,S){ return (E.TODAY); },
