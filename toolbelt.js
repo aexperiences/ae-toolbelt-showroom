@@ -1860,9 +1860,13 @@
       { href:"recruiting.html",label:"Recruiting · ATS",ic:"★", room:"recruit",  accent:"recruit" , icon:"icons/hr.svg"} ]},
     { group:"Paper", items:[
       { href:"sign.html",      label:"e-Sign",          ic:"✍", room:"sign",     accent:"sign" , icon:"icons/docs.svg"},
-      { href:"documents.html", label:"Documents",       ic:"▤", room:"docs",     accent:"sign" , icon:"icons/documents.svg"} ]},
+      { href:"documents.html", label:"Documents",       ic:"▤", room:"docs",     accent:"sign" , icon:"icons/documents.svg"},
+      { href:"law.html",       label:"Law · Contracts", ic:"⚖" } ]},
     { group:"The House", items:[
-      { href:"skins.html",     label:"Skin Machine",    ic:"◐" , icon:"icons/skins.svg"} ]},
+      { href:"hr.html",        label:"HR · People Ops", ic:"☷" },
+      { href:"it.html",        label:"IT · System Health", ic:"♥" },
+      { href:"manual.html",    label:"Owner's Manual",  ic:"?" },
+      { href:"skins.html",     label:"Skins",           ic:"◐" , icon:"icons/skins.svg"} ]},
     { group:"Money", items:[
       { href:"money.html",     label:"Invoicing & Payroll",ic:"◧", room:"money", accent:"money" , icon:"icons/payroll.svg"},
       { href:"books.html",     label:"Books & Metrics", ic:"◭", room:"books",    accent:"money" , icon:"icons/books.svg"} ]},
