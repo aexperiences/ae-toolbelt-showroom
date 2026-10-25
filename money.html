@@ -41,7 +41,11 @@
     content.appendChild(S.card('<h2>How one job gets its price</h2>'+
       '<p class="sub">'+S.esc(c.name)+' · '+S.dayLabel(sample.date)+' · '+S.esc(sample.task)+'. Every invoice is built exactly this way.</p>'+
       '<div class="split2"><div><h3>What the customer is billed</h3><table class="kv"><tbody>'+
-        '<tr><th>Labor</th><td class="mono">'+S.money2(r.laborRate)+'/hr × '+r.hours+' hrs = '+S.money2(r.laborBill)+
+        '<tr><th>Labor</th><td class="mono">'+(sample.billing==="Maintenance agreement"
+            ? 'Service-plan visit: '+(c.agreementAnnual&&c.visitsYr ? S.money2(c.agreementAnnual)+'/yr ÷ '+c.visitsYr+' visits = ' : '')+S.money2(r.laborBill)
+            : sample.billing==="Manufacturer warranty" ? 'Warranty labor allowance × '+r.hours+' hrs = '+S.money2(r.laborBill)
+            : sample.billing==="Our workmanship warranty" ? 'Our warranty — no charge'
+            : S.money2(r.laborRate)+'/hr × '+r.hours+' hrs = '+S.money2(r.laborBill))+
           (r.afterHours?' <span class="muted small">(after-hours '+S.RATES.emergencyMult+'×)</span>':'')+'</td></tr>'+
         '<tr><th>Parts</th><td class="mono">'+S.money2(r.partsCost)+' cost × '+S.RATES.partsMarkup+' = '+S.money2(r.partsBill)+'</td></tr>'+
         '<tr><th>Trip fee</th><td class="mono">'+S.money2(r.trip)+'</td></tr>'+
