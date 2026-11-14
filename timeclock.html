@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Time Clock · Toolbelt OS</title>
+<meta name="description" content="Clock in, take a break, clock out. The whole paid day for every person on the crew, and the pay math the office needs at the end of the week.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/timeclock.html">
+<meta property="og:title" content="Time Clock · Toolbelt OS">
+<meta property="og:description" content="Clock in, take a break, clock out. The whole paid day for every person on the crew, and the pay math the office needs at the end of the week.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+<style>
+.tc-me{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:6px}
+.tc-me .fld{margin:0;min-width:180px;flex:1 1 180px}
+.tc-state{margin:16px 0 4px;font-size:15px}
+.tc-run{font-family:var(--mono,ui-monospace,Menlo,monospace);font-size:44px;line-height:1.05;font-weight:700;letter-spacing:-.01em}
+.tc-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.tc-btns .btn{padding:16px 14px;font-size:16px;justify-content:center;min-height:56px}
+.tc-btns .btn.wide{grid-column:1 / -1}
+.tc-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle;background:var(--mut)}
+.tc-dot.on{background:var(--good)} .tc-dot.break{background:var(--watch)}
+.tc-wk{display:flex;gap:8px;flex-wrap:wrap}
+.tc-list{list-style:none;margin:10px 0 0;padding:0}
+.tc-list li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line-2);font-size:13.5px}
+.tc-list li:last-child{border-bottom:none}
+.tc-form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.tc-form .full{grid-column:1 / -1}
+.tc-name{display:block;text-align:left;background:none;border:none;padding:0;cursor:pointer;font:inherit;color:inherit}
+.tc-name span{display:block;text-decoration:underline}
+#content .card{min-width:0;max-width:100%}
+.tablewrap{max-width:100%}
+.tablewrap td{white-space:nowrap}
+.tablewrap td:first-child{white-space:normal}
+@media(max-width:560px){.tc-run{font-size:38px}.tc-form{grid-template-columns:1fr}.tc-wide{display:none}
+  .tablewrap th,.tablewrap td{padding-left:4px;padding-right:4px}.tablewrap th{letter-spacing:.02em;white-space:normal}
+  .tablewrap table{table-layout:auto;width:100%}.tablewrap td.mono{font-size:12.5px}}
+@media print{.sidebar,.topbar,.mobilebar,.ribbon,.man-fab,.bs-dock,.bs-head,.noprint,#toast-wrap{display:none!important}.card{box-shadow:none;border:1px solid #bbb;break-inside:avoid}}
+</style>
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"timeclock.html", crumb:"Time Clock" });
+  var host = document.createElement("div");
+  content.appendChild(S.page("Time Clock",
+    "Clock in, take a break, clock out. This is the whole paid day — shop time, loading and drive included — not only the hours on a job.",""));
+  content.appendChild(host);
+
+  var ME_KEY = "toolbelt_clock_me", week = S.thisWeek(), seatWas = S.seatNow(), tick = null;
+  function me(){ var id=null; try{ id=localStorage.getItem(ME_KEY); }catch(e){}
+    var techs=S.db().techs||[]; if(!id || !S.techById(id)) id = techs.length ? techs[0].id : null; return id; }
+  function setMe(id){ try{ localStorage.setItem(ME_KEY,id); }catch(e){} }
+  function hrs(n){ return (Number(n)||0).toFixed(2); }
+  function hm(min){ min=Math.max(0,Math.floor(min)); return Math.floor(min/60)+"h "+(min%60<10?"0":"")+(min%60)+"m"; }
+  function t12(stamp){ return stamp ? S.hhmm(String(stamp).slice(11,16)) : "—"; }
+  function todayMin(techId){ var d=S.iso(new Date());
+    return S.punches().filter(function(p){ return p.techId===techId && p.date===d; }).reduce(function(a,p){ return a+S.punchMinutes(p); },0); }
+  function office(){ return S.seesMoney(); }
+
+  /* a location is saved with the punch when the phone allows it; a punch never waits on it for more than a few seconds */
+  function withGeo(done){
+    var fired=false; function go(g){ if(fired) return; fired=true; done(g||null); }
+    if(!navigator.geolocation){ go(null); return; }
+    try{ navigator.geolocation.getCurrentPosition(function(p){ go({ lat:p.coords.latitude, lng:p.coords.longitude, acc:p.coords.accuracy }); },
+      function(){ go(null); }, { enableHighAccuracy:true, timeout:4000, maximumAge:60000 }); }catch(e){ go(null); }
+    setTimeout(function(){ go(null); }, 4500);
+  }
+  function said(r, okMsg){ if(r && r.ok) S.toast(okMsg,"ok"); else S.toast((r&&r.why)||"That did not go through.","bad"); render(); }
+
+  function download(name, text){
+    var b=new Blob(["﻿"+text],{type:"text/csv;charset=utf-8"}), a=document.createElement("a");
+    a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },400);
+  }
+
+  function modal(html){
+    var sc=S.el('<div class="modal-scrim"><div class="modal" role="dialog" aria-modal="true">'+html+'</div></div>');
+    sc.addEventListener("click",function(e){ if(e.target===sc || (e.target.getAttribute&&e.target.getAttribute("data-x")!==null)) sc.remove(); });
+    document.body.appendChild(sc); return sc;
+  }
+
+  function punchCard(){
+    var id=me(), techs=S.db().techs||[];
+    if(!id) return S.card('<h2>Punch</h2><p class="muted">Add your people in HR first. Then each one can clock in here.</p>');
+    var st=S.clockState(id), p=S.openPunch(id), b=S.openBreak(p), t=S.techById(id);
+    var line = st==="off" ? '<span class="tc-dot"></span>Off the clock'
+             : st==="break" ? '<span class="tc-dot break"></span>On break since '+t12(b.s)
+             : '<span class="tc-dot on"></span>On the clock since '+t12(p.in)+' · '+S.esc(p.kind||"Field");
+    var btns = st==="off"
+      ? '<button class="btn tang wide" id="tcIn">Clock in</button>'
+      : st==="break"
+        ? '<button class="btn tang wide" id="tcBack">End break</button><button class="btn ghost wide" id="tcOut">Clock out</button>'
+        : '<button class="btn ghost" id="tcBrk">Start break</button><button class="btn tang" id="tcOut">Clock out</button>';
+    var mine=S.punches().filter(function(x){ return x.techId===id && x.date===S.iso(new Date()); });
+    return S.card('<h2>Punch</h2>'+
+      '<div class="tc-me">'+
+        '<div class="fld"><label for="tcWho">Who is clocking</label><select id="tcWho">'+
+          techs.map(function(x){ return '<option value="'+S.esc(x.id)+'"'+(x.id===id?' selected':'')+'>'+S.esc(x.name)+'</option>'; }).join("")+'</select></div>'+
+        (st==="off" ? '<div class="fld"><label for="tcKind">Starting on</label><select id="tcKind">'+
+          S.CLOCK.kinds.map(function(k){ return '<option>'+S.esc(k)+'</option>'; }).join("")+'</select></div>' : '')+
+      '</div>'+
+      '<div class="tc-state">'+line+'</div>'+
+      '<div class="tc-run" id="tcRun">'+hm(todayMin(id))+'</div>'+
+      '<div class="muted small">'+S.esc(t.name.split(" ")[0])+'\'s paid time today'+(st==="break"?' (stopped while on break)':'')+'</div>'+
+      '<div class="tc-btns">'+btns+'</div>'+
+      (mine.length ? '<ul class="tc-list">'+mine.map(function(x){
+        return '<li><span>'+t12(x.in)+' to '+(x.out?t12(x.out):'now')+' · '+S.esc(x.kind||"Field")+
+          (S.breakMinutes(x)>=1?' · '+Math.round(S.breakMinutes(x))+' min break':'')+
+          (x.geoIn?' · location saved':'')+'</span><b class="mono">'+hm(S.punchMinutes(x))+'</b></li>'; }).join("")+'</ul>' : '')+
+      '<div class="note">In the sample shop, pick any person to try it. On a live system each person signs in and this is their own clock.</div>');
+  }
+
+  function crewCard(){
+    var techs=S.db().techs||[], on=0, br=0;
+    var rows=techs.map(function(t){ var st=S.clockState(t.id), p=S.openPunch(t.id); if(st==="on") on++; if(st==="break") br++;
+      return '<tr><td><span class="tc-dot '+(st==="off"?"":st)+'"></span><b>'+S.esc(t.name)+'</b><div class="muted small">'+S.esc(t.trade||"")+(t.truck?' · '+S.esc(t.truck):'')+'</div></td>'+
+        '<td>'+(st==="off"?'<span class="muted">Off</span>':st==="break"?S.tag("On break","watch"):S.tag("On the clock","good"))+'</td>'+
+        '<td class="mono">'+(p?t12(p.in):"—")+'</td><td class="right mono">'+hm(todayMin(t.id))+'</td></tr>'; }).join("");
+    return S.card('<h2>The crew right now</h2><div class="stats">'+
+      S.stat("On the clock",on,"Working this minute",on?"good":"")+
+      S.stat("On break",br,"Clock stopped",br?"watch":"")+
+      S.stat("Off",techs.length-on-br,"Not clocked in")+'</div>'+
+      (techs.length?'<div class="tablewrap"><table><thead><tr><th>Person</th><th>Now</th><th>In at</th><th class="right">Today</th></tr></thead><tbody>'+rows+'</tbody></table></div>':''));
+  }
+
+  function weekCard(){
+    var techs=S.db().techs||[], tot=0, ot=0;
+    var rows=techs.map(function(t){ var w=S.clockWeek(t.id,week); if(!w.punches.length) return ""; tot+=w.hours; ot+=w.ot;
+      return '<tr><td><button class="tc-name" data-pun="'+S.esc(t.id)+'"><b>'+S.esc(t.name)+'</b><span class="muted small">See punches</span></button></td>'+
+        '<td class="right mono">'+hrs(w.hours)+'</td>'+
+        '<td class="right mono '+(w.ot?"warn":"")+'">'+(w.ot?hrs(w.ot):"—")+'</td>'+
+        '<td class="right mono">'+hrs(w.jobHours)+'</td><td class="right mono tc-wide">'+hrs(w.offJob)+'</td></tr>'; }).join("");
+    return S.card('<div class="cardhead"><h2>Timesheet — week of '+S.dayLabel(week)+'</h2></div>'+
+      '<div class="tc-wk noprint"><button class="btn sm '+(week===S.thisWeek()?"":"ghost")+'" data-wk="'+S.thisWeek()+'">This week</button>'+
+      '<button class="btn sm '+(week===S.lastWeek()?"":"ghost")+'" data-wk="'+S.lastWeek()+'">Last week</button>'+
+      (office()?'<button class="btn ghost sm" id="tcAdd">Add a punch by hand</button>':'')+'</div>'+
+      (rows?'<div class="tablewrap"><table><thead><tr><th>Person</th><th class="right">Hours</th><th class="right">Overtime</th>'+
+        '<th class="right">On jobs</th><th class="right tc-wide">Off jobs</th></tr></thead><tbody>'+rows+
+        '<tr class="tot"><td><b>Crew</b></td><td class="right mono"><b>'+hrs(tot)+'</b></td><td class="right mono"><b>'+(ot?hrs(ot):"—")+'</b></td><td></td><td class="tc-wide"></td></tr>'+
+        '</tbody></table></div>':'<p class="muted">No punches this week yet.</p>')+
+      '<div class="note">On jobs is the time between arriving and leaving a customer. Off jobs is everything else that was on the clock: the shop, loading, driving, training. Overtime starts past '+S.RATES.otAfterHours+' hours in the week.</div>');
+  }
+
+  function exceptionsCard(){
+    var ex=S.clockExceptions(week); if(!ex.length) return null;
+    return S.card('<h2>Needs a look</h2><ul class="tc-list">'+ex.map(function(e){
+      return '<li><span><b>'+S.esc(e.tech.name)+'</b> · '+S.dayLabel(e.punch.date)+' · '+S.esc(e.why)+'</span>'+
+        (office()?'<button class="btn ghost sm" data-fix="'+S.esc(e.punch.id)+'">Fix</button>':'')+'</li>'; }).join("")+'</ul>');
+  }
+
+  function payCard(){
+    if(!office()) return null;
+    var rows=S.payrollWeek(week), g=0, h=0;
+    var body=rows.map(function(r){ g+=r.gross; h+=r.hours;
+      return '<tr><td><b>'+S.esc(r.name)+'</b><div class="muted small">'+S.money2(r.rate)+'/hr</div></td>'+
+        '<td class="right mono">'+hrs(r.reg)+'</td><td class="right mono '+(r.ot?"warn":"")+'">'+(r.ot?hrs(r.ot):"—")+'</td>'+
+        '<td class="right mono tc-wide">'+S.money2(r.regPay)+'</td><td class="right mono tc-wide">'+(r.ot?S.money2(r.otPay):"—")+'</td>'+
+        '<td class="right mono"><b>'+S.money2(r.gross)+'</b></td></tr>'; }).join("");
+    return S.card('<h2>Pay math — week of '+S.dayLabel(week)+'</h2>'+
+      '<p class="sub">Gross pay off the punches above. Only the owner and the office see this card.</p>'+
+      (rows.length?'<div class="tablewrap"><table><thead><tr><th>Person</th><th class="right">Reg. hours</th><th class="right">OT hours</th>'+
+        '<th class="right tc-wide">Regular pay</th><th class="right tc-wide">Overtime pay</th><th class="right">Gross</th></tr></thead><tbody>'+body+
+        '<tr class="tot"><td><b>Total</b></td><td class="right mono" colspan="2"><b>'+hrs(h)+' hrs</b></td><td class="tc-wide"></td><td class="tc-wide"></td><td class="right mono"><b>'+S.money2(g)+'</b></td></tr>'+
+        '</tbody></table></div>'+
+        '<div class="rowbtns noprint" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">'+
+          '<button class="btn" id="tcPayCsv">Download the pay sheet</button>'+
+          '<button class="btn ghost" id="tcTimeCsv">Download the timesheet</button>'+
+          '<button class="btn ghost" id="tcPrint">Print</button></div>'
+        :'<p class="muted">No paid hours in this week.</p>')+
+      '<div class="note">This is gross pay only: hours times rate, with overtime at '+S.RATES.otMultiplier+'× past '+S.RATES.otAfterHours+' hours. It takes out no taxes and no deductions, cuts no checks and files nothing. The office enters these numbers wherever it pays from.</div>'+
+      S.srcNote("Rates are each person's rate in HR. The overtime line and multiplier are this shop's own setting. Not tax or legal advice."));
+  }
+
+  function punchesModal(techId){
+    var t=S.techById(techId), list=S.punchesFor(techId,week);
+    var sc=modal('<h2>'+S.esc(t.name)+'</h2><p class="sub">Week of '+S.dayLabel(week)+'</p>'+
+      (list.length?'<ul class="tc-list">'+list.map(function(p){
+        return '<li><span><b>'+S.dayLabel(p.date)+'</b> · '+t12(p.in)+' to '+(p.out?t12(p.out):'now')+' · '+S.esc(p.kind||"Field")+
+          (S.breakMinutes(p)>=1?' · '+Math.round(S.breakMinutes(p))+' min break':'')+
+          (p.edits&&p.edits.length?'<div class="muted small">Changed by '+S.esc(p.edits[p.edits.length-1].by)+': '+S.esc(p.edits[p.edits.length-1].why)+'</div>':'')+'</span>'+
+          '<span style="white-space:nowrap"><b class="mono">'+hm(S.punchMinutes(p))+'</b>'+
+          (office()?' <button class="btn ghost sm" data-fix="'+S.esc(p.id)+'">Fix</button>':'')+'</span></li>'; }).join("")+'</ul>'
+        :'<p class="muted">No punches.</p>')+
+      '<div style="margin-top:16px"><button class="btn ghost" data-x>Close</button></div>');
+    sc.addEventListener("click",function(e){ var f=e.target.getAttribute && e.target.getAttribute("data-fix"); if(f){ sc.remove(); fixModal(f); } });
+  }
+
+  function fixModal(pid){
+    var p=S.punchById(pid); if(!p) return; var t=S.techById(p.techId);
+    var sc=modal('<h2>Fix a punch</h2><p class="sub">'+S.esc(t?t.name:"")+' · '+S.dayLabel(p.date)+'. The original stays on the record with your reason.</p>'+
+      '<div class="tc-form">'+
+        '<div class="fld"><label for="fxIn">Clock in</label><input id="fxIn" type="datetime-local" value="'+S.esc(p.in)+'"></div>'+
+        '<div class="fld"><label for="fxOut">Clock out</label><input id="fxOut" type="datetime-local" value="'+S.esc(p.out||"")+'"></div>'+
+        '<div class="fld full"><label for="fxWhy">Why it is being changed</label><input id="fxWhy" type="text" maxlength="200" placeholder="Forgot to clock out"></div>'+
+      '</div><div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn tang" id="fxSave">Save the fix</button><button class="btn ghost" data-x>Cancel</button></div>');
+    sc.querySelector("#fxSave").addEventListener("click",function(){
+      var r=S.editPunch(pid,{ in:sc.querySelector("#fxIn").value, out:sc.querySelector("#fxOut").value||null }, "Office", sc.querySelector("#fxWhy").value);
+      if(r.ok){ sc.remove(); said(r,"Punch fixed. The original is kept on the record."); } else S.toast(r.why,"bad"); });
+  }
+
+  function addModal(){
+    var techs=S.db().techs||[], d=S.iso(new Date());
+    var sc=modal('<h2>Add a punch by hand</h2><p class="sub">For a day somebody could not clock. It is marked as added by hand.</p>'+
+      '<div class="tc-form">'+
+        '<div class="fld full"><label for="adWho">Person</label><select id="adWho">'+techs.map(function(x){ return '<option value="'+S.esc(x.id)+'">'+S.esc(x.name)+'</option>'; }).join("")+'</select></div>'+
+        '<div class="fld"><label for="adIn">Clock in</label><input id="adIn" type="datetime-local" value="'+d+'T07:00"></div>'+
+        '<div class="fld"><label for="adOut">Clock out</label><input id="adOut" type="datetime-local" value="'+d+'T15:30"></div>'+
+        '<div class="fld"><label for="adKind">Kind</label><select id="adKind">'+S.CLOCK.kinds.map(function(k){ return '<option>'+S.esc(k)+'</option>'; }).join("")+'</select></div>'+
+        '<div class="fld full"><label for="adWhy">Why it is added by hand</label><input id="adWhy" type="text" maxlength="200" placeholder="Phone was dead"></div>'+
+      '</div><div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn tang" id="adSave">Add the punch</button><button class="btn ghost" data-x>Cancel</button></div>');
+    sc.querySelector("#adSave").addEventListener("click",function(){
+      var r=S.addPunch(sc.querySelector("#adWho").value, sc.querySelector("#adIn").value, sc.querySelector("#adOut").value,
+        sc.querySelector("#adKind").value, "Office", sc.querySelector("#adWhy").value);
+      if(r.ok){ sc.remove(); said(r,"Punch added."); } else S.toast(r.why,"bad"); });
+  }
+
+  function render(){
+    host.innerHTML="";
+    [punchCard(), crewCard(), weekCard(), exceptionsCard(), payCard()].forEach(function(c){ if(c) host.appendChild(c); });
+    var q=function(s){ return host.querySelector(s); };
+    var who=q("#tcWho"); if(who) who.addEventListener("change",function(){ setMe(who.value); render(); });
+    var bi=q("#tcIn"); if(bi) bi.addEventListener("click",function(){ bi.disabled=true; var k=(q("#tcKind")||{}).value;
+      withGeo(function(g){ said(S.clockIn(me(),{ kind:k, geo:g }), "Clocked in."+(g?" Location saved.":"")); }); });
+    var bo=q("#tcOut"); if(bo) bo.addEventListener("click",function(){ bo.disabled=true;
+      withGeo(function(g){ said(S.clockOut(me(),{ geo:g }), "Clocked out."); }); });
+    var bb=q("#tcBrk"); if(bb) bb.addEventListener("click",function(){ said(S.breakStart(me()),"Break started. The clock is stopped."); });
+    var bk=q("#tcBack"); if(bk) bk.addEventListener("click",function(){ said(S.breakEnd(me()),"Back on the clock."); });
+    Array.prototype.forEach.call(host.querySelectorAll("[data-wk]"),function(b){ b.addEventListener("click",function(){ week=b.getAttribute("data-wk"); render(); }); });
+    Array.prototype.forEach.call(host.querySelectorAll("[data-pun]"),function(b){ b.addEventListener("click",function(){ punchesModal(b.getAttribute("data-pun")); }); });
+    Array.prototype.forEach.call(host.querySelectorAll("[data-fix]"),function(b){ b.addEventListener("click",function(){ fixModal(b.getAttribute("data-fix")); }); });
+    var ad=q("#tcAdd"); if(ad) ad.addEventListener("click",addModal);
+    var pc=q("#tcPayCsv"); if(pc) pc.addEventListener("click",function(){ download("Pay sheet, week of "+week+".csv", S.payrollCsv(week)); });
+    var tc=q("#tcTimeCsv"); if(tc) tc.addEventListener("click",function(){ download("Timesheet, week of "+week+".csv", S.timesheetCsv(week)); });
+    var pr=q("#tcPrint"); if(pr) pr.addEventListener("click",function(){ window.print(); });
+  }
+
+  render();
+  /* the running time, and a seat change in the header, both repaint without a reload */
+  tick=setInterval(function(){
+    var s=S.seatNow(); if(s!==seatWas){ seatWas=s; render(); return; }
+    var r=document.getElementById("tcRun"); if(r && !document.querySelector(".modal-scrim")){ var id=me(); if(id) r.textContent=hm(todayMin(id)); }
+  },1000);
+})();
+</script>
+</body>
+</html>

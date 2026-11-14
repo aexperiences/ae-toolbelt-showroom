@@ -1319,6 +1319,151 @@
     return out;
   }
 
+
+  /* ====================================================================
+     TIME CLOCK — the paid day, not only the job.
+     Job stamps (above) prove the visit. Punches are the whole shift: shop
+     time, loading, drive, training and breaks, so the week's paid hours are
+     the hours the person actually worked. Pay math runs off punches.
+     Stamps are local wall-clock strings ("YYYY-MM-DDTHH:MM") so the sample
+     week rebases with the rest of the book.
+     ==================================================================== */
+  var CLOCK = { longDayHrs:12, kinds:["Field","Shop","Drive","Training"], staleOpenHrs:16 };
+  function pad2(n){ return (n<10?"0":"")+n; }
+  function localStamp(d){ d=d||new Date(); return iso(d)+"T"+pad2(d.getHours())+":"+pad2(d.getMinutes()); }
+  function stampMs(s){ return s ? new Date(String(s).slice(0,16)).getTime() : null; }
+  function minToStamp(dISO, m){ m=Math.max(0,Math.min(1439,Math.round(m))); return dISO+"T"+pad2(Math.floor(m/60))+":"+pad2(m%60); }
+  /* The sample shop's punches are laid over the same jobs the rest of the book shows, so the Time Clock,
+     the timesheet stamps and payroll all tell one story. An emptied (real) book starts with none. */
+  function clockSeed(d){
+    var out=[], n=1, today=iso(TODAY), nowMin=(new Date()).getHours()*60+(new Date()).getMinutes();
+    (d.techs||[]).forEach(function(t){
+      var days={};
+      (d.jobs||[]).forEach(function(j){
+        if(j.techId!==t.id || !j.proof || !j.proof.inTs || j.date>today) return;
+        var wk=weekOf(j.date); if(wk!==thisWeek() && wk!==lastWeek()) return;
+        var a=hhmmToMin((j.proof.inTs.split("T")[1]||"00:00").slice(0,5));
+        var b=j.proof.outTs ? hhmmToMin((j.proof.outTs.split("T")[1]||"00:00").slice(0,5)) : null;
+        var x=days[j.date]||(days[j.date]={first:a,last:b,open:false});
+        if(a<x.first) x.first=a;
+        if(b===null) x.open=true; else if(x.last===null||b>x.last) x.last=b;
+      });
+      Object.keys(days).sort().forEach(function(dISO){
+        var x=days[dISO], inM=Math.max(300,x.first-35), isToday=dISO===today;
+        if(isToday && inM>nowMin) return;
+        var outM = x.last===null ? null : Math.min(1380,x.last+25);
+        var stillOn = isToday && (x.open || outM===null || outM>nowMin);
+        var p={ id:"p"+(n++), techId:t.id, date:dISO, in:minToStamp(dISO,inM), out:stillOn?null:minToStamp(dISO,outM===null?inM+480:outM),
+                kind:"Field", breaks:[], seed:true };
+        var endM = stillOn ? nowMin : (outM===null?inM+480:outM);
+        if(endM-inM>=360){ var bs=Math.max(inM+180, 720); if(bs+30<=endM) p.breaks.push({ s:minToStamp(dISO,bs), e:minToStamp(dISO,bs+30) }); }
+        out.push(p);
+      });
+    });
+    return out;
+  }
+  function punches(){ var d=db(); if(!d.punches){ d.punches = d.sample===false ? [] : clockSeed(d); write(d); } return d.punches; }
+  function punchById(id){ return punches().filter(function(p){ return p.id===id; })[0]||null; }
+  function openPunch(techId){ return punches().filter(function(p){ return p.techId===techId && !p.out; })[0]||null; }
+  function openBreak(p){ return p ? (p.breaks||[]).filter(function(b){ return !b.e; })[0]||null : null; }
+  function clockState(techId){ var p=openPunch(techId); return !p ? "off" : (openBreak(p) ? "break" : "on"); }
+  function breakMinutes(p, nowMs){ nowMs=nowMs||Date.now();
+    return (p.breaks||[]).reduce(function(a,b){ var s=stampMs(b.s), e=b.e?stampMs(b.e):nowMs; return a+Math.max(0,(e-s)/60000); },0); }
+  /* worked minutes = clock-in to clock-out, less unpaid breaks. An open punch runs to now. */
+  function punchMinutes(p, nowMs){ nowMs=nowMs||Date.now();
+    var s=stampMs(p.in), e=p.out?stampMs(p.out):nowMs; return Math.max(0,(e-s)/60000 - breakMinutes(p,nowMs)); }
+  function geoNote(g){ return g && typeof g.lat==="number" ? { lat:+g.lat.toFixed(5), lng:+g.lng.toFixed(5), acc:g.acc?Math.round(g.acc):null } : null; }
+  function clockIn(techId, opts){ opts=opts||{}; punches();
+    if(!techById(techId)) return { ok:false, why:"Pick a person first." };
+    if(openPunch(techId)) return { ok:false, why:techName(techId)+" is already on the clock." };
+    var rec; save(function(d){ d.seq=(d.seq||1)+1;
+      rec={ id:"p"+Date.now().toString(36)+d.seq, techId:techId, date:iso(new Date()), in:localStamp(), out:null,
+            kind:opts.kind||"Field", breaks:[], geoIn:geoNote(opts.geo) };
+      d.punches.push(rec); logBus(d,"Time Clock", techName(techId)+" clocked in ("+rec.kind+")"); });
+    return { ok:true, punch:rec }; }
+  function clockOut(techId, opts){ opts=opts||{}; var p=openPunch(techId);
+    if(!p) return { ok:false, why:techName(techId)+" is not on the clock." };
+    save(function(d){ var q=d.punches.filter(function(x){ return x.id===p.id; })[0]; var st=localStamp();
+      (q.breaks||[]).forEach(function(b){ if(!b.e) b.e=st; });
+      q.out=st; q.geoOut=geoNote(opts.geo); if(opts.note) q.note=String(opts.note).slice(0,200);
+      logBus(d,"Time Clock", techName(techId)+" clocked out — "+(punchMinutes(q)/60).toFixed(2)+" hrs"); });
+    return { ok:true, punch:punchById(p.id) }; }
+  function breakStart(techId){ var p=openPunch(techId);
+    if(!p) return { ok:false, why:"Clock in first." }; if(openBreak(p)) return { ok:false, why:"Already on break." };
+    save(function(d){ var q=d.punches.filter(function(x){ return x.id===p.id; })[0]; q.breaks=q.breaks||[]; q.breaks.push({ s:localStamp(), e:null });
+      logBus(d,"Time Clock", techName(techId)+" started a break"); });
+    return { ok:true }; }
+  function breakEnd(techId){ var p=openPunch(techId), b=openBreak(p);
+    if(!b) return { ok:false, why:"Not on a break." };
+    save(function(d){ var q=d.punches.filter(function(x){ return x.id===p.id; })[0];
+      q.breaks.forEach(function(x){ if(!x.e) x.e=localStamp(); }); logBus(d,"Time Clock", techName(techId)+" is back from break"); });
+    return { ok:true }; }
+  /* The office can correct a punch. The original is kept on the record with who changed it and why —
+     a timesheet that can be edited without a trace is not a timesheet. */
+  function editPunch(id, patch, who, why){ var p=punchById(id);
+    if(!p) return { ok:false, why:"That punch is gone." };
+    if(!why || !String(why).trim()) return { ok:false, why:"Say why the punch is being changed." };
+    var nin = patch.in || p.in, nout = patch.out===undefined ? p.out : patch.out;
+    if(nout && stampMs(nout) <= stampMs(nin)) return { ok:false, why:"Clock-out has to be after clock-in." };
+    if(punchOverlap(p.techId, nin, nout, id)) return { ok:false, why:"That overlaps another punch for the same person." };
+    save(function(d){ var q=d.punches.filter(function(x){ return x.id===id; })[0];
+      q.edits=q.edits||[]; q.edits.push({ at:localStamp(), by:who||"Office", why:String(why).slice(0,200), was:{ in:q.in, out:q.out } });
+      q.in=nin; q.out=nout; q.date=nin.slice(0,10); if(patch.kind) q.kind=patch.kind;
+      if(q.out) (q.breaks||[]).forEach(function(b){ if(!b.e) b.e=q.out; });
+      logBus(d,"Time Clock", "Punch corrected for "+techName(q.techId)+" by "+(who||"Office")+" — "+String(why).slice(0,80)); });
+    return { ok:true }; }
+  function addPunch(techId, inS, outS, kind, who, why){
+    if(!techById(techId)) return { ok:false, why:"Pick a person first." };
+    if(!inS || !outS || stampMs(outS) <= stampMs(inS)) return { ok:false, why:"Clock-out has to be after clock-in." };
+    if(!why || !String(why).trim()) return { ok:false, why:"Say why the punch is being added by hand." };
+    if(punchOverlap(techId, inS, outS)) return { ok:false, why:"That overlaps another punch for the same person." };
+    punches(); save(function(d){ d.seq=(d.seq||1)+1;
+      d.punches.push({ id:"p"+Date.now().toString(36)+d.seq, techId:techId, date:inS.slice(0,10), in:inS, out:outS, kind:kind||"Field", breaks:[],
+        edits:[{ at:localStamp(), by:who||"Office", why:String(why).slice(0,200), was:null }] });
+      logBus(d,"Time Clock", "Punch added by hand for "+techName(techId)+" by "+(who||"Office")); });
+    return { ok:true }; }
+  /* one person cannot be on the clock twice at once */
+  function punchOverlap(techId, inS, outS, skipId){ var a=stampMs(inS), b=outS?stampMs(outS):Date.now();
+    return punches().filter(function(p){ if(p.techId!==techId || p.id===skipId) return false;
+      var s=stampMs(p.in), e=p.out?stampMs(p.out):Date.now(); return a<e && s<b; })[0]||null; }
+  function punchesFor(techId, wk){ wk=wk||thisWeek();
+    return punches().filter(function(p){ return p.techId===techId && weekOf(p.date)===wk; })
+      .sort(function(a,b){ return a.in<b.in?-1:1; }); }
+  /* one person's week: minutes per day, total, regular and overtime hours, and the hours the jobs account for */
+  function clockWeek(techId, wk){ wk=wk||thisWeek(); var days={}, tot=0, list=punchesFor(techId,wk);
+    list.forEach(function(p){ var m=punchMinutes(p); days[p.date]=(days[p.date]||0)+m; tot+=m; });
+    var hrs=tot/60, reg=Math.min(hrs,RATES.otAfterHours), ot=Math.max(0,hrs-RATES.otAfterHours), job=stampHours(techId,wk);
+    return { techId:techId, week:wk, days:days, punches:list, hours:hrs, reg:reg, ot:ot, jobHours:job, offJob:Math.max(0,hrs-job) }; }
+  /* PAY MATH — gross only. Regular hours at the person's rate, overtime past the shop's weekly line at the
+     shop's multiplier. No tax, no deductions, no filing: the office enters these wherever it pays from. */
+  function payWeek(techId, wk){ var t=techById(techId)||{}, w=clockWeek(techId,wk), rate=Number(t.payRate)||0;
+    var regPay=w.reg*rate, otPay=w.ot*rate*RATES.otMultiplier;
+    return { techId:techId, name:t.name||"", week:w.week, hours:w.hours, reg:w.reg, ot:w.ot, rate:rate,
+             regPay:regPay, otPay:otPay, gross:regPay+otPay, jobHours:w.jobHours, offJob:w.offJob }; }
+  function payrollWeek(wk){ return (db().techs||[]).map(function(t){ return payWeek(t.id,wk); }).filter(function(r){ return r.hours>0; }); }
+  function clockExceptions(wk){ wk=wk||thisWeek(); var out=[], nowMs=Date.now();
+    punches().forEach(function(p){ if(weekOf(p.date)!==wk) return; var t=techById(p.techId); if(!t) return;
+      if(!p.out && (nowMs-stampMs(p.in))/3600000 > CLOCK.staleOpenHrs) out.push({ tech:t, punch:p, why:"Never clocked out" });
+      else if(punchMinutes(p)/60 > CLOCK.longDayHrs) out.push({ tech:t, punch:p, why:"Over "+CLOCK.longDayHrs+" hours on one punch" });
+      if(p.edits && p.edits.length) out.push({ tech:t, punch:p, why:"Changed by hand — "+p.edits[p.edits.length-1].why });
+    });
+    return out; }
+  function csvCell(v){ v=String(v==null?"":v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+  function payrollCsv(wk){ wk=wk||lastWeek();
+    var rows=[["Week of","Employee","Regular hours","Overtime hours","Total hours","Rate","Regular pay","Overtime pay","Gross pay"]];
+    payrollWeek(wk).forEach(function(r){ rows.push([wk, r.name, r.reg.toFixed(2), r.ot.toFixed(2), r.hours.toFixed(2), r.rate.toFixed(2),
+      r.regPay.toFixed(2), r.otPay.toFixed(2), r.gross.toFixed(2)]); });
+    return rows.map(function(r){ return r.map(csvCell).join(","); }).join("\r\n"); }
+  function timesheetCsv(wk){ wk=wk||lastWeek();
+    var rows=[["Employee","Date","Clock in","Clock out","Break minutes","Paid hours","Kind","Changed by hand"]];
+    (db().techs||[]).forEach(function(t){ punchesFor(t.id,wk).forEach(function(p){
+      rows.push([t.name, p.date, p.in.slice(11,16), p.out?p.out.slice(11,16):"", Math.round(breakMinutes(p)), (punchMinutes(p)/60).toFixed(2), p.kind||"",
+        p.edits&&p.edits.length ? p.edits[p.edits.length-1].by+": "+p.edits[p.edits.length-1].why : ""]); }); });
+    return rows.map(function(r){ return r.map(csvCell).join(","); }).join("\r\n"); }
+  /* who holds money in this view — the same seat the Birdseye shell is showing */
+  function seatNow(){ try{ return localStorage.getItem("birdseye:toolbelt:seat") || "owner"; }catch(e){ return "owner"; } }
+  function seesMoney(){ var s=seatNow(); return s==="owner" || s==="office"; }
+
   /* ====================================================================
      CHECKPOINTS — job-stage checklists with required photos.
      This extends the gates that already exist here (licence, permit): a job
@@ -1846,7 +1991,8 @@
       { href:"dispatch.html",  label:"Dispatch & Board",ic:"▦", room:"dispatch", accent:"dispatch" , icon:"icons/schedule.svg"},
       { href:"field.html",     label:"Field & Proof",   ic:"◉", room:"field",    accent:"field" , icon:"icons/checkin.svg"},
       { href:"worksheets.html",label:"Worksheets & Permits",ic:"✎", room:"work", accent:"work" , icon:"icons/worksheets.svg"},
-      { href:"checkpoints.html",label:"Checkpoints",        ic:"☑", room:"work", accent:"work" , icon:"icons/comply.svg"} ]},
+      { href:"checkpoints.html",label:"Checkpoints",        ic:"☑", room:"work", accent:"work" , icon:"icons/comply.svg"},
+      { href:"timeclock.html", label:"Time Clock",          ic:"◷", accent:"field", icon:"icons/timeclock.svg" } ]},
     { group:"The Trucks", items:[
       { href:"licences.html",  label:"Licences",        ic:"⛨", room:"licences", accent:"licence" , icon:"icons/law.svg"},
       { href:"truck.html",     label:"Truck Stock",     ic:"▣", room:"truck",    accent:"ops", icon:"icons/truck-stock.svg" },
@@ -2128,6 +2274,7 @@
     { t:"Checkpoints — the job cannot close undocumented", c:"Every job carries a short stage checklist: what to photograph before anyone touches the equipment, the trade-specific step that matters in the middle, and the walkthrough before you leave. The items that carry proof are required, and the refusal is built into the system rather than into one screen — a job with a missing before-photo will not close from the field app, the office, or anywhere else. Jobs that were closed before Checkpoints existed read their state from the record they already left: photos on file and a captured signature." },
     { t:"e-Sign — how signing works here", c:"Pick a template, and the system mints an unguessable link. The customer opens it in any browser with no account, consents to sign electronically, adopts a signature by drawing or typing it, and the record freezes with a timestamped audit trail." },
     { t:"Is an electronic signature legally binding?", c:"US law (ESIGN and UETA) generally makes an electronic signature as enforceable as ink when the signer consented to do business electronically, intended to sign, the signature is attributable to them, and the record is retained and reproducible. This module captures all four. It is not legal advice — have your attorney review the consent language for your state." },
+    { t:"Time Clock and pay math", c:"Each person clocks in, starts and ends a break, and clocks out from the Time Clock room. That is the whole paid day, shop and drive time included, not only the hours on a job. The timesheet shows paid hours, overtime past the shop's weekly line, and how much of the week was on jobs. The office can fix or add a punch, and the original stays on the record with the reason. The owner and the office also see pay math: regular and overtime hours times each person's rate, as gross pay, with a pay sheet to download. It takes out no taxes, cuts no checks and files nothing." },
     { t:"What this system does NOT do by itself", c:"Four things need an outside party and the system says so rather than pretending: pulling the permit (the city or county issues it), taking payment (a licensed processor moves the money), live supply-house catalogue pricing (the distributor's feed), and filing payroll (a payroll processor). Everything upstream of those is native here." },
     { t:"The Approval Desk", c:"Anything that changes a rate, sends to a customer, writes off a callback, or commits money waits here instead of happening quietly. It should stay nearly empty." },
     { t:"On your phone", c:"Every room works on a phone. The bottom bar carries Home, Board, Field, Money and Approvals; Menu opens everything else. Buttons are sized for gloves." },
@@ -2190,6 +2337,10 @@
     truckState:truckState, currentJobFor:currentJobFor, etaFor:etaFor, serviceDue:serviceDue,
     milesSinceService:milesSinceService, sendOnMyWay:sendOnMyWay, jobByOmw:jobByOmw, FLEET_CLOCK:FLEET_CLOCK,
     stampsFor:stampsFor, stampHours:stampHours, stampExceptions:stampExceptions, pingAgeMin:pingAgeMin,
+    CLOCK:CLOCK, punches:punches, punchById:punchById, openPunch:openPunch, openBreak:openBreak, clockState:clockState,
+    punchMinutes:punchMinutes, breakMinutes:breakMinutes, clockIn:clockIn, clockOut:clockOut, breakStart:breakStart, breakEnd:breakEnd,
+    editPunch:editPunch, addPunch:addPunch, punchesFor:punchesFor, clockWeek:clockWeek, payWeek:payWeek, payrollWeek:payrollWeek,
+    clockExceptions:clockExceptions, payrollCsv:payrollCsv, timesheetCsv:timesheetCsv, seatNow:seatNow, seesMoney:seesMoney, localStamp:localStamp,
     plans:plans, planById:planById, memberships:memberships, membershipById:membershipById,
     membershipFor:membershipFor, isMember:isMember, memberDiscount:memberDiscount, memberPrice:memberPrice,
     visitsLeft:visitsLeft, planVisitsDue:planVisitsDue, renewalsDue:renewalsDue, renewalsAtRisk:renewalsAtRisk,
