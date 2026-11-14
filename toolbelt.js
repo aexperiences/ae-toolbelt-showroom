@@ -1216,6 +1216,7 @@
      board reads the same at 3am as it does at noon. A live shop uses the wall clock. */
   var FLEET_CLOCK = "09:05";
   function pingAgeMin(v){
+    if(v && v.ping && v.ping.live) return Math.max(0, Math.round((Date.now()-v.ping.ts)/60000));
     if(!v || !v.ping || !v.ping.at) return null;
     var d = hhmmToMin(FLEET_CLOCK) - hhmmToMin(v.ping.at);
     return d < 0 ? 0 : d;
@@ -1235,13 +1236,49 @@
   /* miles + minutes from the truck's last ping to a job site */
   function etaFor(jobId){
     var j = jobById(jobId); if(!j || !j.techId) return null;
-    var v = truckForTech(j.techId); if(!v || !v.ping) return null;
+    var v = truckForTech(j.techId); if(v) v = withLive(v); if(!v || !v.ping) return null;
     var c = customerById(j.customerId); if(!c || c.lat===undefined) return null;
     var mi = haversineMi(v.ping.lat, v.ping.lng, c.lat, c.lng);
     return { miles: Math.round(mi*10)/10, minutes: driveMin(mi) };
   }
 
+  /* ---- LIVE TRACKING: real positions from the crews' phones -------------------------------------
+     The owner turns it on once. That makes a long random fleet key, kept in this shop's book. Each
+     person gets a link that opens the Driver page on their phone; while that page is open and
+     sharing, the phone's GPS position goes to the fleet's row on the AE server and this map reads
+     it back. A truck with a live phone shows where the phone really is; a truck without one keeps
+     its sample position, and the map says which is which. */
+  var TRACK_API = (typeof location!=="undefined" && /(^|\.)aexperiences\.studio$/.test(location.hostname)) ? "/api/os-track" : "https://aexperiences.studio/api/os-track";
+  var LIVE = {}, LIVE_AT = 0, LIVE_ERR = "";
+  function trackOn(){ var t=db().track; return !!(t && t.key); }
+  function trackKey(){ var t=db().track; return t && t.key ? t.key : ""; }
+  function newKey(){ var a=new Uint8Array(24), out="", abc="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+    (global.crypto||global.msCrypto).getRandomValues(a); for(var i=0;i<a.length;i++) out+=abc[a[i]%abc.length];
+    return out+Date.now().toString(36); }
+  function trackStart(){ if(trackOn()) return trackKey();
+    var k=newKey(); save(function(d){ d.track={ key:k, since:localStamp() }; logBus(d,"FleetView","Live tracking turned on"); }); return k; }
+  /* turning it off throws the key away: every link that was handed out stops working */
+  function trackStop(){ save(function(d){ delete d.track; logBus(d,"FleetView","Live tracking turned off — the old links no longer work"); }); LIVE={}; LIVE_AT=0; }
+  function trackLink(techId){ var t=techById(techId); if(!t || !trackOn()) return "";
+    var base=location.href.replace(/[?#].*$/,"").replace(/[^\/]*$/,"");
+    return base+"drive.html#k="+encodeURIComponent(trackKey())+"&t="+encodeURIComponent(t.id)+"&n="+encodeURIComponent(t.name.split(" ")[0]); }
+  function trackPull(done){ if(!trackOn()){ LIVE={}; if(done) done(false); return; }
+    fetch(TRACK_API+"?k="+encodeURIComponent(trackKey()),{ cache:"no-store" }).then(function(r){ return r.json().then(function(j){ return { s:r.status, j:j }; }); })
+      .then(function(x){ if(!x.j || !x.j.ok){ LIVE_ERR = x.j && x.j.error==="NOT_WIRED" ? "The tracking server is not connected yet." : "The tracking server did not answer."; if(done) done(false); return; }
+        var m={}; (x.j.phones||[]).forEach(function(p){ m[p.id]=p; }); LIVE=m; LIVE_AT=Date.now(); LIVE_ERR=""; if(done) done(true); })
+      .catch(function(){ LIVE_ERR="No connection to the tracking server."; if(done) done(false); }); }
+  function livePhones(){ return Object.keys(LIVE).map(function(k){ return LIVE[k]; }); }
+  function liveFor(techId){ return LIVE[techId] || null; }
+  function trackStatus(){ return { on:trackOn(), at:LIVE_AT, err:LIVE_ERR, phones:livePhones().length }; }
+  function compass(h){ return typeof h!=="number" ? "" : ["N","NE","E","SE","S","SW","W","NW"][Math.round(h/45)%8]; }
+  function withLive(v){ var p=liveFor(v.techId); if(!p) return v;
+    var d=new Date(p.ts), c={}; Object.keys(v).forEach(function(k){ c[k]=v[k]; });
+    c.ping={ lat:p.lat, lng:p.lng, at:pad2(d.getHours())+":"+pad2(d.getMinutes()), mph:p.mph||0,
+             heading:(p.mph||0)>3 ? (compass(p.hdg)||"moving") : "parked", battery:p.batt, ts:p.ts, acc:p.acc, live:true };
+    c.live=true; return c; }
+
   function truckState(v){
+    v = withLive(v);
     var j = currentJobFor(v.techId);
     var eta = j ? etaFor(j.id) : null;
     var day = iso(TODAY);
@@ -2268,7 +2305,7 @@
     { t:"Where the work comes from", c:"General contractors, property managers, realtors, home-warranty desks and the supply-house counter. The referral book tracks cadence and conversion — and shows which of those accounts is actually worth having. High-volume home-warranty work is often the lowest margin on the board." },
     { t:"The Switchboard", c:"An inbound call opens the caller's whole history before you say hello — what they own, what you did last time, whether they are on an agreement, the gate code. Book the job while they are still on the line and the customer record is created for you if they are new. The AI receptionist takes overflow and books off the live board, then writes down what it did. On this floor the calls are simulated and labelled as such; your real number, recording and IVR are wired to your line at purchase." },
     { t:"24/7 web booking", c:"The booking page runs on your own website under your own brand. It only offers times the live board can actually take: every technician is checked for a conflict and for the licence the work requires, so it cannot double-book you and it cannot hand a job to somebody who is not legal to do it. A booking creates the customer and an OPEN job on the board." },
-    { t:"FleetView and the phone in the tech's pocket", c:"Truck positions come from the branded technician app's GPS. There is no box to install in a van and no per-truck subscription. One tap sends the customer a link with the tech's name and a live ETA — no app for them, no account. The same arrive and leave stamps that prove the visit also total the week's hours, so payroll reconciles against jobs that actually happened. Vehicle-level telemetry hardware is optional and wired at purchase; most shops never need it." },
+    { t:"FleetView and the phone in the tech's pocket", c:"Turn on live tracking in FleetView and each person gets a link for their phone. While that Driver page is open and sharing, the truck shows on the map where the phone really is, with its speed and how old the position is. It works in the phone's browser, so it follows the phone while the page is on screen; it does not run in the background with the screen off. Trucks without a live phone keep their sample position and the map marks which is which. There is no box to install in a van and no per-truck subscription. One tap sends the customer a link with the tech's name and a live ETA — no app for them, no account. The same arrive and leave stamps that prove the visit also total the week's hours, so payroll reconciles against jobs that actually happened. Vehicle-level telemetry hardware is optional and wired at purchase; most shops never need it." },
     { t:"Service plans that chase their own renewals", c:"A maintenance agreement here is a live record, not a note in a file. It knows how many visits are left this year, when it renews, and whether it renews itself. Visits go on the board from the plan; the member's discount is applied in the pricebook rather than remembered by whoever answers the phone; and plan revenue sits on its own ledger line so you can see what the agreements are worth separately from service work. When a renewal is close the department drafts the nudge and it lands on the Approval Desk — it is never sent behind your back." },
     { t:"Financing on the estimate", c:"Above the minimum, every quote can show the monthly alongside the total — $8,400, or about $147 a month — with the terms laid out and no games about what the rate is. The margin stays on the quote where you can see it. On this floor the payment view is a demonstration: the financing partner and the actual underwriting are wired to your account at purchase, priced into your build fee. Nothing here approves anybody for credit." },
     { t:"Checkpoints — the job cannot close undocumented", c:"Every job carries a short stage checklist: what to photograph before anyone touches the equipment, the trade-specific step that matters in the middle, and the walkthrough before you leave. The items that carry proof are required, and the refusal is built into the system rather than into one screen — a job with a missing before-photo will not close from the field app, the office, or anywhere else. Jobs that were closed before Checkpoints existed read their state from the record they already left: photos on file and a captured signature." },
@@ -2337,6 +2374,8 @@
     truckState:truckState, currentJobFor:currentJobFor, etaFor:etaFor, serviceDue:serviceDue,
     milesSinceService:milesSinceService, sendOnMyWay:sendOnMyWay, jobByOmw:jobByOmw, FLEET_CLOCK:FLEET_CLOCK,
     stampsFor:stampsFor, stampHours:stampHours, stampExceptions:stampExceptions, pingAgeMin:pingAgeMin,
+    TRACK_API:TRACK_API, trackOn:trackOn, trackKey:trackKey, trackStart:trackStart, trackStop:trackStop, trackLink:trackLink,
+    trackPull:trackPull, livePhones:livePhones, liveFor:liveFor, trackStatus:trackStatus,
     CLOCK:CLOCK, punches:punches, punchById:punchById, openPunch:openPunch, openBreak:openBreak, clockState:clockState,
     punchMinutes:punchMinutes, breakMinutes:breakMinutes, clockIn:clockIn, clockOut:clockOut, breakStart:breakStart, breakEnd:breakEnd,
     editPunch:editPunch, addPunch:addPunch, punchesFor:punchesFor, clockWeek:clockWeek, payWeek:payWeek, payrollWeek:payrollWeek,

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Driver · Toolbelt OS</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Share this phone's location with your shop while you drive.">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+<style>
+body{margin:0;background:var(--paper,#f4f1ea);color:var(--ink,#232b33);font-family:var(--sans,system-ui,-apple-system,"Segoe UI",sans-serif)}
+.dr{max-width:520px;margin:0 auto;padding:22px 18px 40px}
+.dr-top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.dr-top img{width:44px;height:44px;border-radius:11px;display:block}
+.dr-top b{display:block;font-size:17px} .dr-top span{font-size:12.5px;color:var(--mut,#6b7783)}
+.dr-card{background:var(--card,#fff);border:1px solid var(--line,#d9dee3);border-radius:16px;padding:22px 20px;box-shadow:var(--sh,0 2px 10px rgba(0,0,0,.06))}
+.dr h1{font-size:25px;line-height:1.15;margin:0 0 8px}
+.dr p{font-size:15.5px;line-height:1.5;margin:0 0 12px;color:var(--ink-2,#3d4852)}
+.dr-state{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;margin:18px 0 4px}
+.dr-dot{width:14px;height:14px;border-radius:50%;background:var(--mut,#8391a0);flex:0 0 auto}
+.dr-dot.on{background:var(--good,#2f8f6b);box-shadow:0 0 0 6px rgba(47,143,107,.18)}
+.dr-dot.bad{background:var(--bad,#b4485e)}
+.dr-sub{font-size:14px;color:var(--mut,#6b7783);min-height:20px}
+.dr-btn{display:block;width:100%;margin-top:18px;padding:19px 16px;font-size:18px;font-weight:700;border-radius:14px;border:1px solid transparent;cursor:pointer;min-height:62px}
+.dr-btn.go{background:var(--tang,#e4832b);color:var(--on-tang,#fff)}
+.dr-btn.stop{background:transparent;color:var(--ink,#232b33);border-color:var(--line,#c9d0d6)}
+.dr-note{margin-top:16px;padding:12px 14px;border-radius:12px;background:var(--tang-wash,#f7ead9);font-size:14px;line-height:1.5}
+.dr-foot{margin-top:22px;text-align:center;font-size:12.5px;color:var(--mut,#6b7783)}
+</style>
+</head>
+<body>
+<div class="dr">
+  <div class="dr-top"><img src="https://www.aexperiences.com/Toolbelt_OS.png" alt="" onerror="this.style.display='none'">
+    <div><b>Toolbelt OS</b><span>Driver</span></div></div>
+  <div class="dr-card" id="card"></div>
+  <div class="dr-foot">Your location goes to your shop only, and only while sharing is on.<br>Accelerated Experiences LLC</div>
+</div>
+<script>
+(function(){
+  var API = /(^|\.)aexperiences\.studio$/.test(location.hostname) ? "/api/os-track" : "https://aexperiences.studio/api/os-track";
+  var SEND_EVERY = 15000;
+  var q = {}; location.hash.replace(/^#/,"").split("&").forEach(function(kv){ var i=kv.indexOf("="); if(i>0) q[kv.slice(0,i)] = decodeURIComponent(kv.slice(i+1)); });
+  var K = q.k || "", ID = q.t || "", NAME = (q.n || "").slice(0,40);
+  var card = document.getElementById("card");
+  var watch = null, timer = null, last = null, lastSent = 0, sentOk = 0, wake = null, sharing = false, batt = null, err = "";
+
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function clock(ts){ var d=new Date(ts), h=d.getHours(), m=d.getMinutes(), ap=h>=12?"PM":"AM"; h=h%12||12; return h+":"+(m<10?"0":"")+m+" "+ap; }
+
+  if(!/^[A-Za-z0-9_-]{24,80}$/.test(K) || !/^[A-Za-z0-9_.-]{1,40}$/.test(ID)){
+    card.innerHTML = '<h1>This link is not complete</h1><p>Ask the office to send you a new one.</p>'; return;
+  }
+  if(!("geolocation" in navigator)){
+    card.innerHTML = '<h1>This phone cannot share its location here</h1><p>Open the link in Safari or Chrome on your phone.</p>'; return;
+  }
+  try{ if(navigator.getBattery) navigator.getBattery().then(function(b){ batt=Math.round(b.level*100); b.addEventListener("levelchange",function(){ batt=Math.round(b.level*100); }); }); }catch(e){}
+
+  function paint(){
+    var state = sharing
+      ? (err ? '<span class="dr-dot bad"></span>'+esc(err) : '<span class="dr-dot on"></span>Sharing with the shop')
+      : '<span class="dr-dot"></span>Not sharing';
+    var sub = sharing
+      ? (sentOk ? 'Last sent '+clock(sentOk)+(last&&last.acc?' · within '+Math.round(last.acc)+' m':'') : (err ? '' : 'Finding you…'))
+      : (err || '');
+    card.innerHTML =
+      '<h1>'+(NAME?esc(NAME)+', share':'Share')+' your location with the shop</h1>'+
+      '<p>The office sees where your truck is while this is on. Turn it off when your day is done.</p>'+
+      '<div class="dr-state" id="st">'+state+'</div><div class="dr-sub" id="sub">'+esc(sub)+'</div>'+
+      (sharing ? '<button class="dr-btn stop" id="stop">Stop sharing</button>' : '<button class="dr-btn go" id="go">Share my location</button>')+
+      '<div class="dr-note">Keep this page open and on screen while you drive. If the phone locks or you switch apps, sharing pauses until you come back to this page.</div>';
+    var g=document.getElementById("go"), s=document.getElementById("stop");
+    if(g) g.onclick=start; if(s) s.onclick=stop;
+  }
+
+  function send(){
+    if(!sharing || !last) return;
+    lastSent = Date.now();
+    var body = { k:K, id:ID, name:NAME, lat:last.lat, lng:last.lng };
+    if(typeof last.acc==="number") body.acc=last.acc;
+    if(typeof last.mph==="number") body.mph=last.mph;
+    if(typeof last.hdg==="number") body.hdg=last.hdg;
+    if(typeof batt==="number") body.batt=batt;
+    fetch(API,{ method:"POST", headers:{ "content-type":"application/json" }, body:JSON.stringify(body), cache:"no-store" })
+      .then(function(r){ return r.json().then(function(j){ return { s:r.status, j:j }; }); })
+      .then(function(x){
+        if(x.j && x.j.ok){ sentOk=Date.now(); err=""; }
+        else if(x.s===503) err="The shop's tracking is not connected yet";
+        else if(x.s===429) err="Sending too fast. Trying again";
+        else err="The shop did not take that. Ask the office for a new link";
+        paint(); })
+      .catch(function(){ err="No signal. Will send again when it is back"; paint(); });
+  }
+
+  function onPos(p){
+    var c=p.coords;
+    last = { lat:c.latitude, lng:c.longitude, acc:c.accuracy,
+             mph:(typeof c.speed==="number" && c.speed>=0) ? c.speed*2.23694 : undefined,
+             hdg:(typeof c.heading==="number" && !isNaN(c.heading)) ? c.heading : undefined };
+    if(Date.now()-lastSent >= SEND_EVERY) send();
+  }
+  function onErr(e){
+    err = e && e.code===1 ? "Location is turned off for this page. Allow it in the phone's settings, then tap Share again"
+        : "Cannot find this phone right now. Still trying";
+    if(e && e.code===1){ halt(); }
+    paint();
+  }
+  function lock(){ try{ if(navigator.wakeLock && sharing) navigator.wakeLock.request("screen").then(function(w){ wake=w; },function(){}); }catch(e){} }
+  function start(){
+    sharing=true; err=""; sentOk=0; lastSent=0; paint();
+    watch = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy:true, maximumAge:5000, timeout:30000 });
+    timer = setInterval(function(){ if(Date.now()-lastSent >= SEND_EVERY) send(); }, 5000);
+    lock();
+  }
+  function halt(){
+    sharing=false;
+    if(watch!==null){ try{ navigator.geolocation.clearWatch(watch); }catch(e){} watch=null; }
+    if(timer){ clearInterval(timer); timer=null; }
+    if(wake){ try{ wake.release(); }catch(e){} wake=null; }
+  }
+  function stop(){
+    halt(); err=""; paint();
+    try{ fetch(API,{ method:"POST", headers:{ "content-type":"application/json" }, body:JSON.stringify({ k:K, id:ID, stop:true }), keepalive:true }); }catch(e){}
+  }
+  document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible" && sharing){ lock(); send(); } });
+  window.addEventListener("online",function(){ if(sharing) send(); });
+  paint();
+})();
+</script>
+</body>
+</html>

@@ -31,6 +31,12 @@
   .batt.low{background:var(--bad-w);border-color:var(--bad);color:var(--bad);}
   .omwbox{margin-top:10px;padding:10px 12px;background:var(--good-w);border:1px solid var(--good);
           border-radius:10px;font-size:13px;word-break:break-all;}
+  .lv-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line-2);font-size:13.5px}
+  .lv-row:first-of-type{border-top:0}
+  .lv-row .tbtns .btn{padding:8px 12px}
+  @media(max-width:640px){.lv-row>div:first-child{flex:1 1 100%}}
+  .lv-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--mut);margin-right:7px}
+  .lv-dot.on{background:var(--good);box-shadow:0 0 0 4px rgba(47,143,107,.18)}
 </style>
 </head>
 <body>
@@ -41,8 +47,8 @@
   var S = window.Toolbelt;
   var content = S.mount({ active:"fleetview.html", crumb:"FleetView" });
   content.appendChild(S.page("FleetView — the trucks, right now",
-    "Every position on this floor is the last GPS ping from the branded technician app on that tech's phone. " +
-    "There is no box to install in a van. Street tiles and optional vehicle-level telemetry are wired at purchase.",""));
+    "Turn on live tracking and each truck shows where that person's phone really is. " +
+    "There is no box to install in a van. Trucks without a live phone show the sample position, and the map marks which is which.",""));
   var host=document.createElement("div"); content.appendChild(host);
 
   var STATUS_COLOR = {
@@ -110,6 +116,7 @@
     states.forEach(function(f){
       if(!f.truck.ping) return;
       var x=X(f.truck.ping.lng), y=Y(f.truck.ping.lat), col=colorFor(f.status);
+      if(f.truck.live) g.push('<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="17" fill="none" stroke="#2f8f6b" stroke-width="3"/>');
       g.push('<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="10" fill="'+col+'" stroke="#ffffff" stroke-width="3"/>');
       g.push('<text x="'+x.toFixed(1)+'" y="'+(y+4).toFixed(1)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">'+
              S.esc(String(f.truck.label).replace(/[^0-9]/g,""))+'</text>');
@@ -131,8 +138,30 @@
         '<span><i class="fdot" style="background:#8391a0"></i>Idle</span>'+
         '<span><i class="fdot" style="background:#b4485e"></i>No recent ping</span>'+
         '<span><i class="fdot" style="background:#fff;border-color:#8391a0"></i>Today’s job sites</span>'+
+        '<span><i class="fdot" style="background:transparent;border-color:#2f8f6b;box-shadow:none"></i>Green ring: live from the phone</span>'+
       '</div>';
   }
+
+  function ago(ts){ var m=Math.max(0,Math.round((Date.now()-ts)/60000)); return m<1?"just now":m+" min ago"; }
+  function liveCard(states){
+    var st=S.trackStatus(), office=S.seesMoney();
+    if(!st.on) return S.card('<h2>Live tracking</h2>'+
+      '<p class="sub">Off. Turn it on and every person gets a link for their phone. While they have it open, their truck shows here where the phone really is.</p>'+
+      (office?'<button class="btn tang" id="lvOn">Turn on live tracking</button>':'<p class="muted">The owner or the office turns this on.</p>'));
+    var techs=S.db().techs||[];
+    return S.card('<div class="cardhead"><h2>Live tracking</h2>'+S.tag(st.phones+' phone'+(st.phones===1?'':'s')+' sharing', st.phones?"good":"")+'</div>'+
+      '<p class="sub">On. '+(st.err?'<b class="warn">'+S.esc(st.err)+'</b> ':'')+(st.at?'Checked '+ago(st.at)+'. ':'')+'This list refreshes on its own every fifteen seconds.</p>'+
+      techs.map(function(t){ var p=S.liveFor(t.id), first=t.name.split(" ")[0];
+        return '<div class="lv-row"><div><span class="lv-dot '+(p?"on":"")+'"></span><b>'+S.esc(t.name)+'</b>'+
+          '<div class="muted small">'+(p?'Sharing · '+ago(p.ts)+(p.mph>3?' · '+p.mph+' mph':'')+(p.acc?' · within '+p.acc+' m':'')+(typeof p.batt==="number"?' · battery '+p.batt+'%':'')
+            :'Not sharing')+'</div></div>'+
+          (office?'<div class="tbtns"><button class="btn ghost sm" data-copy="'+S.esc(t.id)+'" data-name="'+S.esc(first)+'">Copy '+S.esc(first)+'’s link</button>'+
+            '<a class="btn ghost sm" href="sms:'+S.esc(String(t.phone||"").replace(/[^0-9+]/g,""))+'?&body='+encodeURIComponent("Open this while you drive so the shop can see your truck: "+S.trackLink(t.id))+'">Text it</a></div>':'')+
+          '</div>'; }).join("")+
+      '<div class="note">The link opens a Driver page in the phone’s browser. It shares while that page is open and on screen; if the phone locks or they switch apps, it pauses until they come back. Nothing is saved but the last position, and it is gone a day after they stop.</div>'+
+      (office?'<div style="margin-top:12px"><button class="btn ghost sm" id="lvOff">Turn live tracking off</button></div>':''));
+  }
+  function pull(){ if(!S.trackOn()) return; S.trackPull(function(){ if(!document.querySelector(".modal-scrim")) render(); }); }
 
   function render(){
     host.innerHTML="";
@@ -152,9 +181,13 @@
       S.stat("Stale / low battery", stale+lowbat.length, "A dead phone is a blind truck", (stale+lowbat.length)?"watch":"good")+
       '</div>'));
 
+    host.appendChild(liveCard(states));
+
+    var nLive = states.filter(function(f){ return f.truck.live; }).length;
     host.appendChild(S.card('<h2>The board, on a map</h2>'+
-      '<p class="sub">Positions plotted from each phone’s last GPS ping at '+S.esc(S.FLEET_CLOCK)+
-      '. Street tiles are added when your account is wired at purchase — this plot plots real coordinates, it does not draw roads.</p>'+
+      '<p class="sub">'+(nLive ? nLive+' truck'+(nLive>1?'s are':' is')+' live from the phone right now (green ring). The rest show the sample position from '+S.esc(S.FLEET_CLOCK)+'.'
+        : 'Sample positions from '+S.esc(S.FLEET_CLOCK)+'. Turn on live tracking above to see real phones here.')+
+      ' This plot places real coordinates; it does not draw roads.</p>'+
       buildMap(states)));
 
     host.appendChild(S.card('<h2>Every truck</h2>'+
@@ -173,7 +206,8 @@
               ? '<b>'+S.esc(f.job.task)+'</b><br>'+S.esc(cust?cust.name:"")+
                 (f.eta?' · <span class="mono">'+f.eta.miles+' mi · '+f.eta.minutes+' min out</span>':'')
               : '<span class="muted">Nothing assigned on today’s board.</span>')+
-            '<div class="muted small" style="margin-top:4px;">Last ping '+(f.ageMin===null?'—':f.ageMin+' min ago')+
+            '<div class="muted small" style="margin-top:4px;">'+(v.live?'<b style="color:var(--good)">Live from the phone</b> · '+(v.ping.mph>3?v.ping.mph+' mph '+S.esc(v.ping.heading)+' · ':'')+(f.ageMin<1?'just now':f.ageMin+' min ago')
+              :'Sample position · last ping '+(f.ageMin===null?'—':f.ageMin+' min ago'))+
             ' · <span class="batt'+(f.lowBattery?' low':'')+'">'+(bat===null?'—':bat+'%')+'</span></div>'+
           '</div>'+
           '<div class="tbtns">'+
@@ -237,13 +271,22 @@
       '<p class="sub"><b>Wired at purchase:</b> street map tiles for this floor, and — only if you want vehicle-level telemetry ' +
       '(engine hours, harsh braking, idling) — an in-vehicle device per truck. <b>Vehicle telemetry, from '+S.money(1200)+' plus hardware.</b> ' +
       'Most shops never need it; the phone in the tech’s pocket is already in the truck.</p>'+
-      '<p class="sub muted small">This floor runs on a simulated sample fleet at a pinned sample clock. No position here belongs to a real vehicle or a real person.</p>'));
+      '<p class="sub muted small">Until live tracking is turned on, this floor runs on a sample fleet at a pinned sample clock, and no position belongs to a real vehicle or person. A live phone is real: it shows only while that person has the Driver page open and sharing.</p>'));
 
+    var on=host.querySelector("#lvOn"); if(on) on.onclick=function(){ S.trackStart(); S.toast("Live tracking is on. Send each person their link.","ok"); pull(); render(); };
+    var off=host.querySelector("#lvOff"); if(off) off.onclick=function(){
+      if(!confirm("Turn live tracking off?\n\nEvery link you handed out stops working. You can turn it on again and send new links.")) return;
+      S.trackStop(); S.toast("Live tracking is off.","ok"); render(); };
+    host.querySelectorAll("[data-copy]").forEach(function(b){ b.onclick=function(){ var link=S.trackLink(b.dataset.copy);
+      function done(){ S.toast("Link copied. Paste it in a text to "+b.dataset.name+".","ok"); }
+      if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done,function(){ prompt("Copy this link:",link); });
+      else prompt("Copy this link:",link); }; });
     host.querySelectorAll("[data-omw]").forEach(function(b){ b.onclick=function(){
       S.sendOnMyWay(b.dataset.omw);
       S.toast("On-my-way sent — the customer has a live ETA.","ok"); render(); }; });
   }
-  render();
+  render(); pull();
+  setInterval(pull, 15000);
 })();
 </script>
 </body>
