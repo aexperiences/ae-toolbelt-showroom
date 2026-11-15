@@ -54,11 +54,11 @@
       q.map(function(j){ var c=S.customerById(j.customerId)||{}, t=S.techById(j.techId), ph=phoneDigits(c.phone), msg=S.reviewMessage(j.id);
         return '<div class="rv-row"><div><b>'+S.esc(c.name||"Customer")+'</b><div class="muted small">'+S.esc(j.task||"")+' · '+S.dayLabel(j.date)+(t?' · '+S.esc(t.name):'')+'</div></div>'+
           '<div class="rv-btns">'+
-          (link?(ph?'<a class="btn tang sm" data-ask="'+S.esc(j.id)+'" data-via="text" href="sms:'+S.esc(ph)+'?&body='+encodeURIComponent(msg)+'">Text it</a>':'')+
-            (c.email?'<a class="btn ghost sm" data-ask="'+S.esc(j.id)+'" data-via="email" href="mailto:'+S.esc(c.email)+'?subject='+encodeURIComponent("Thank you from "+((S.db().shop||{}).name||"us"))+'&body='+encodeURIComponent(msg)+'">Email it</a>':'')+
-            '<button class="btn ghost sm" data-copy="'+S.esc(j.id)+'">Copy the message</button>'
+          (link?(ph?'<a class="btn tang" data-ask="'+S.esc(j.id)+'" data-via="text" href="sms:'+S.esc(ph)+'?&body='+encodeURIComponent(msg)+'">Text it</a>':'')+
+            (c.email?'<a class="btn ghost" data-ask="'+S.esc(j.id)+'" data-via="email" href="mailto:'+S.esc(c.email)+'?subject='+encodeURIComponent("Thank you from "+((S.db().shop||{}).name||"us"))+'&body='+encodeURIComponent(msg)+'">Email it</a>':'')+
+            '<button class="btn ghost" data-copy="'+S.esc(j.id)+'">Copy the message</button>'
             :'<span class="muted small">Set the review link first</span>')+
-          '<button class="btn ghost sm" data-skip="'+S.esc(j.id)+'">Skip</button></div></div>'; }).join(""))+
+          '<button class="btn ghost" data-skip="'+S.esc(j.id)+'">Skip</button></div></div>'; }).join(""))+
       (q.length&&link?'<div class="rv-msg"><b>What they get:</b> '+S.esc(S.reviewMessage(q[0].id))+'</div>':'')));
     host.appendChild(S.card('<h2>Asked</h2>'+(!done.length?'<p class="muted">Nobody yet.</p>':
       '<div class="tablewrap"><table><thead><tr><th>Customer</th><th>Job</th><th>Asked</th><th>How</th></tr></thead><tbody>'+
