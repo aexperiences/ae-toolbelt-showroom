@@ -696,3 +696,56 @@ td.right+td,th.right+th{padding-left:16px}
 .warn{color:var(--t-bad)}
 .modal h3.warn{color:var(--t-bad)}
 .dc-row.on .dc-ic{background:var(--card)}
+
+/* ===================================================================
+   THE WORKDAY LOOK (Nov 15 2026). Anthony: "more of a colorful interior
+   in the shell, do not make it crazy i want it easy to use and see and
+   press." Each room wears its own color; big, clear buttons and fields;
+   status reads at a glance. Light, always.
+   =================================================================== */
+body{--room:var(--tang)}
+.pagehead{position:relative;padding:16px 18px 16px 22px;border-radius:16px;background:linear-gradient(100deg,color-mix(in srgb,var(--room) 16%,#fff) 0%,#fff 70%);
+  border:1px solid color-mix(in srgb,var(--room) 28%,#fff);box-shadow:0 10px 26px -20px color-mix(in srgb,var(--room) 70%,#000)}
+.pagehead::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:6px;border-radius:0 6px 6px 0;background:var(--room)}
+.pagehead h1{font-size:26px}
+.pagehead .sub{font-size:14.5px;color:var(--ink-2)}
+.card{border-radius:16px}
+.card > h2,.card .cardhead h2{font-size:17px;display:flex;align-items:center;gap:9px}
+.card > h2::before,.card .cardhead h2::before{content:"";width:10px;height:10px;border-radius:3px;background:var(--room);flex:none}
+.stat{border-radius:14px;border-top:4px solid color-mix(in srgb,var(--room) 70%,#fff)}
+.stat.good{background:color-mix(in srgb,var(--good) 10%,#fff);border-top-color:var(--good)}
+.stat.watch{background:color-mix(in srgb,var(--watch) 13%,#fff);border-top-color:var(--watch)}
+.stat.bad{background:color-mix(in srgb,var(--bad) 10%,#fff);border-top-color:var(--bad)}
+.stat .s-l{font-size:11.5px}
+.stat .s-v{font-size:26px}
+.btn{min-height:48px;padding:12px 18px;font-size:15.5px;border-radius:12px}
+.btn.sm{min-height:40px;padding:8px 13px;font-size:14px}
+input,select,textarea{min-height:46px;font-size:16px;border-radius:11px}
+textarea{min-height:90px}
+.tag{font-size:12.5px;padding:4px 10px;border-radius:999px;font-weight:700}
+.tag.good{background:color-mix(in srgb,var(--good) 16%,#fff)} .tag.watch{background:color-mix(in srgb,var(--watch) 22%,#fff)} .tag.bad{background:color-mix(in srgb,var(--bad) 15%,#fff)}
+.note{border-radius:12px;font-size:14px;line-height:1.55}
+@media(max-width:640px){.pagehead{padding:14px 14px 14px 18px}.pagehead h1{font-size:23px}.stat .s-v{font-size:22px}}
+
+/* Brian, the helper */
+.br-log{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px;min-height:0}
+.br-line{max-width:92%;padding:11px 14px;border-radius:16px;font-size:15px;line-height:1.5}
+.br-line p{margin:3px 0 0}
+.br-line.brian{align-self:flex-start;background:#fff;border:1px solid var(--line);box-shadow:0 6px 16px -12px rgba(31,39,46,.4)}
+.br-line.brian > b{color:var(--tang-2);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase}
+.br-line.you{align-self:flex-end;background:var(--tang);color:#fff;border-bottom-right-radius:6px}
+.br-think{color:var(--mut)}
+.br-card{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 10px 10px 13px;border-radius:13px;background:color-mix(in srgb,var(--tang) 9%,#fff);border:1.5px solid color-mix(in srgb,var(--tang) 40%,#fff);font-weight:700;font-size:14.5px}
+.br-card span{flex:1}
+.br-do{border:0;border-radius:11px;background:var(--tang);color:#fff;font:800 15px/1 var(--sans);padding:0 18px;min-height:46px;cursor:pointer}
+.br-card.done{background:color-mix(in srgb,var(--good) 10%,#fff);border-color:color-mix(in srgb,var(--good) 45%,#fff)}
+.br-card.done .br-do{background:var(--good)}
+.br-chips{display:flex;gap:8px;overflow-x:auto;padding:4px 14px 10px;scrollbar-width:none}
+.br-chip{flex:none;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:0 14px;min-height:40px;font:700 14px/1 var(--sans);color:var(--ink);cursor:pointer}
+.br-form{display:flex;gap:8px;padding:0 14px 8px}
+.br-form input{flex:1;min-width:0;min-height:50px;border-radius:14px}
+.br-mic,.br-send{flex:none;width:50px;height:50px;border-radius:14px;border:0;font-size:20px;cursor:pointer;background:var(--rail);color:#fff;touch-action:none}
+.br-send{background:var(--tang)}
+.br-mic.on{background:var(--bad);box-shadow:0 0 0 6px color-mix(in srgb,var(--bad) 22%,transparent)}
+.br-voice{display:flex;gap:8px;align-items:center;padding:0 16px 14px;font-size:13px;color:var(--mut)}
+.br-voice input{min-height:0;width:18px;height:18px}

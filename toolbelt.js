@@ -1358,6 +1358,96 @@
 
 
 
+
+  /* ====================================================================
+     BRIAN — the helper (Nov 15 2026). Anthony: "I want the helper...Brian
+     to be something that is of huge use...like roz is in nurse next door
+     inventory." Say it or type it; Brian answers from this shop's own book
+     and lines up what should be done as cards. Nothing happens until the
+     person taps "Do it"; then this engine does it. Everything still works
+     by hand. Spoken input and read-back use the phone's own speech, where
+     the browser has it.
+     ==================================================================== */
+  var HELP_API = (typeof location!=="undefined" && /(^|\.)aexperiences\.studio$/.test(location.hostname)) ? "/api/os-helper" : "https://aexperiences.studio/api/os-helper";
+  function brianBook(){ var d=db(), today=iso(TODAY), money=seesMoney();
+    var jobs=(d.jobs||[]).filter(function(j){ return j.date>=iso(addDays(TODAY,-1)) && j.date<=iso(addDays(TODAY,7)); }).slice(0,80).map(function(j){
+      var c=customerById(j.customerId)||{}; return { id:j.id, date:j.date, start:j.start, task:j.task, trade:j.trade, customer:c.name, customerId:j.customerId, techId:j.techId||null, tech:j.techId?(techById(j.techId)||{}).name:null, status:j.status }; });
+    var low=[]; (d.parts||[]).forEach(function(p){ Object.keys(p.stock||{}).forEach(function(t){ if((p.stock[t]||0)<=0) low.push({ part:p.name, sku:p.sku, techId:t, tech:(techById(t)||{}).name }); }); });
+    return { today:today, weekday:TODAY.toLocaleDateString("en-US",{weekday:"long"}), shop:(d.shop||{}).name,
+      techs:(d.techs||[]).map(function(t){ var p=openPunch(t.id); return { id:t.id, name:t.name, trade:t.trade, clock:clockState(t.id), inSince:p?p.in.slice(11,16):null }; }),
+      jobs:jobs,
+      estimates:(d.estimates||[]).filter(function(e){ return e.stage!=="Won" && e.stage!=="Lost"; }).slice(0,40).map(function(e){
+        var o={ id:e.id, title:e.title, customer:(customerById(e.customerId)||{}).name, stage:e.stage, requested:e.requested }; if(money) o.amount=e.amount; return o; }),
+      reviews:reviewQueue(30).slice(0,20).map(function(j){ return { jobId:j.id, customer:(customerById(j.customerId)||{}).name, task:j.task, date:j.date }; }),
+      reviewLinkSet:!!reviewLink(), low:low.slice(0,30), tracking:trackOn(),
+      customers:(d.customers||[]).slice(0,80).map(function(c){ return { id:c.id, name:c.name, city:c.city }; }) }; }
+  function brianDo(a){ var r;
+    switch(a.type){
+      case "clock_in": r=clockIn(a.techId,{ kind:a.kind||"Field" }); return r.ok ? techName(a.techId)+" is on the clock." : r.why;
+      case "clock_out": r=clockOut(a.techId); return r.ok ? techName(a.techId)+" is clocked out." : r.why;
+      case "break_start": r=breakStart(a.techId); return r.ok ? techName(a.techId)+" is on break." : r.why;
+      case "break_end": r=breakEnd(a.techId); return r.ok ? techName(a.techId)+" is back on the clock." : r.why;
+      case "assign_job": if(!jobById(a.jobId)||!techById(a.techId)) return "That job or person is gone."; assign(a.jobId,a.techId); return techName(a.techId)+" is on "+((jobById(a.jobId)||{}).task||"the job")+".";
+      case "send_omw": if(!jobById(a.jobId)) return "That job is gone."; sendOnMyWay(a.jobId); return "On-my-way sent to "+((customerById((jobById(a.jobId)||{}).customerId)||{}).name||"the customer")+".";
+      case "move_estimate": moveEstimate(a.estimateId,a.stage); return "Moved to "+a.stage+".";
+      case "ask_review": var j=jobById(a.jobId), c=j?customerById(j.customerId):null; if(!j) return "That job is gone.";
+        if(!reviewLink()){ location.href="reviews.html"; return "Paste your review link first. Opening Reviews."; }
+        var ph=String((c||{}).phone||"").replace(/[^0-9+]/g,""); reviewAsk(a.jobId,"text");
+        if(ph) location.href="sms:"+ph+"?&body="+encodeURIComponent(reviewMessage(a.jobId)); return "Opening a text to "+((c||{}).name||"the customer")+".";
+      case "draft_estimate": location.href="estimates.html?ai="+encodeURIComponent(a.text||"")+"&c="+encodeURIComponent(a.customerId||"")+"&t="+encodeURIComponent(a.trade||""); return "Opening the AI draft in Estimates.";
+      case "open_room": location.href=(a.room==="dashboard"?"dashboard":a.room)+".html"; return "Opening it.";
+    } return "I cannot do that one."; }
+  function brian(el){
+    var hist=[], speak=true, rec=null, busy=false;
+    try{ speak=localStorage.getItem("toolbelt_brian_voice")!=="off"; }catch(e){}
+    var SR=global.SpeechRecognition||global.webkitSpeechRecognition;
+    el.innerHTML='<div class="br-log" id="brLog" aria-live="polite"></div>'+
+      '<div class="br-chips" id="brChips"></div>'+
+      '<form class="br-form" id="brForm"><input id="brQ" type="text" autocomplete="off" placeholder="Tell Brian…" aria-label="Tell Brian">'+
+      (SR?'<button type="button" class="br-mic" id="brMic" aria-label="Hold to talk to Brian">🎤</button>':'')+
+      '<button type="submit" class="br-send" aria-label="Send">➤</button></form>'+
+      '<label class="br-voice"><input type="checkbox" id="brVoice"'+(speak?' checked':'')+'> Brian reads his answers out loud</label>';
+    var log=el.querySelector("#brLog"), q=el.querySelector("#brQ");
+    var CH=seesMoney()?["What's on today?","Who's on the clock?","Clock me in","Draft an estimate","Who should I ask for a review?","What's low on the trucks?"]
+      :["What's on today?","Clock me in","Start my break","What's low on my truck?","Where's my next job?"];
+    el.querySelector("#brChips").innerHTML=CH.map(function(c){ return '<button type="button" class="br-chip">'+esc(c)+'</button>'; }).join("");
+    el.querySelectorAll(".br-chip").forEach(function(b){ b.onclick=function(){ ask(b.textContent); }; });
+    function line(who,html){ var d=document.createElement("div"); d.className="br-line "+who; d.innerHTML=html; log.appendChild(d); log.scrollTop=log.scrollHeight; return d; }
+    function say(t){ if(!speak||!global.speechSynthesis) return; try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.rate=1.03; u.lang="en-US";
+      var v=(speechSynthesis.getVoices()||[]).filter(function(v){ return /en-US/.test(v.lang) && /Daniel|Alex|Aaron|Male|Guy|Davis|Google US English/i.test(v.name); })[0]; if(v) u.voice=v; speechSynthesis.speak(u); }catch(e){} }
+    function hello(){ var t=(db().jobs||[]).filter(function(j){ return j.date===iso(TODAY); }).length, h=new Date().getHours();
+      var hi=h<12?"Morning.":h<17?"Afternoon.":"Evening.", board=t?(t+" job"+(t===1?"":"s")+" on today\'s board."):"Nothing on today\'s board yet.";
+      line("brian",'<b>Brian</b><p>'+hi+' '+board+' Tell me what you need: clock someone in, put a tech on a job, draft an estimate, ask for reviews. I line it up, you tap <strong>Do it</strong>.</p>'); }
+    function cards(acts,box){ acts.forEach(function(a){
+      var c=document.createElement("div"); c.className="br-card"; c.innerHTML='<span>'+esc(a.label)+'</span><button type="button" class="br-do">Do it</button>';
+      c.querySelector(".br-do").onclick=function(){ var b=this; b.disabled=true; var msg=brianDo(a); c.classList.add("done"); b.textContent="Done"; c.querySelector("span").textContent=msg;
+        hist.push({ role:"brian", content:"(tapped) "+msg }); toast(msg,"ok"); };
+      box.appendChild(c); }); }
+    function ask(text){ text=String(text||"").trim(); if(!text||busy) return; busy=true; q.value="";
+      line("you",'<p>'+esc(text)+'</p>'); var wait=line("brian",'<b>Brian</b><p class="br-think">Thinking…</p>');
+      fetch(HELP_API,{ method:"POST", headers:{ "content-type":"application/json" }, cache:"no-store",
+        body:JSON.stringify({ said:text, room:(location.pathname.split("/").pop()||"dashboard").replace(".html",""), seat:seatNow(), money:seesMoney(), history:hist.slice(-6), book:brianBook() }) })
+        .then(function(r){ return r.json().then(function(j){ return { s:r.status, j:j }; }); })
+        .then(function(x){ busy=false;
+          if(!x.j||!x.j.ok){ var m=askManual(text), alt=(Array.isArray(m)&&m.length)?(m[0].t+": "+(m[0].b||m[0].c||"")):"";
+            wait.innerHTML='<b>Brian</b><p>'+(x.s===429?"I need a minute; too many questions at once.":"I cannot reach my notes right now.")+(alt?" From the Owner's Manual — "+esc(alt):"")+'</p>'; return; }
+          hist.push({ role:"you", content:text }); hist.push({ role:"brian", content:x.j.say });
+          wait.innerHTML='<b>Brian</b><p>'+esc(x.j.say)+'</p>'; if((x.j.actions||[]).length) cards(x.j.actions,wait); log.scrollTop=log.scrollHeight; say(x.j.say); })
+        .catch(function(){ busy=false; wait.innerHTML='<b>Brian</b><p>No signal. Everything still works by hand; try me again when you have service.</p>'; }); }
+    el.querySelector("#brForm").onsubmit=function(e){ e.preventDefault(); ask(q.value); };
+    el.querySelector("#brVoice").onchange=function(){ speak=this.checked; try{ localStorage.setItem("toolbelt_brian_voice",speak?"on":"off"); }catch(e){} if(!speak&&global.speechSynthesis) speechSynthesis.cancel(); };
+    var mic=el.querySelector("#brMic");
+    if(mic){ var start=function(e){ e.preventDefault(); if(rec) return; try{ rec=new SR(); rec.lang="en-US"; rec.interimResults=true; rec.continuous=false;
+        var heard=""; mic.classList.add("on"); q.placeholder="Listening…";
+        rec.onresult=function(ev){ heard=Array.prototype.map.call(ev.results,function(r){ return r[0].transcript; }).join(" "); q.value=heard; };
+        rec.onend=function(){ mic.classList.remove("on"); q.placeholder="Tell Brian…"; rec=null; if(heard.trim()) ask(heard); };
+        rec.onerror=function(){ mic.classList.remove("on"); rec=null; q.placeholder="Tell Brian…"; };
+        rec.start(); }catch(err){ rec=null; mic.classList.remove("on"); } };
+      var stop=function(){ if(rec) try{ rec.stop(); }catch(e){} };
+      mic.addEventListener("pointerdown",start); mic.addEventListener("pointerup",stop); mic.addEventListener("pointerleave",stop); }
+    hello();
+  }
+
   /* ====================================================================
      REVIEW REQUESTS — after a job closes, ask the customer for a review.
      The shop pastes its own review link once (Google, Facebook, anywhere).
@@ -2346,6 +2436,9 @@
     main.appendChild(content); main.appendChild(footer());
     app.appendChild(side); app.appendChild(main);
     document.body.innerHTML=""; document.body.appendChild(app); document.body.appendChild(backdrop);
+    /* each room wears its own color (the Workday look, Nov 15 2026) */
+    (function(){ var it=null; DEPTS.forEach(function(g){ (g.items||[]).forEach(function(x){ if(x.href===o.active) it=x; }); });
+      var a=it&&(it.accent||it.room); if(a) document.body.style.setProperty("--room","var(--a-"+a+", var(--tang))"); })();
     document.body.appendChild(renderMobileBar(o.active));
     document.body.appendChild(el('<div id="toast-wrap"></div>'));
     try{ applySkin(); renderSkinPill(); }catch(e){}
@@ -2463,6 +2556,7 @@
     truckState:truckState, currentJobFor:currentJobFor, etaFor:etaFor, serviceDue:serviceDue,
     milesSinceService:milesSinceService, sendOnMyWay:sendOnMyWay, jobByOmw:jobByOmw, FLEET_CLOCK:FLEET_CLOCK,
     stampsFor:stampsFor, stampHours:stampHours, stampExceptions:stampExceptions, pingAgeMin:pingAgeMin,
+    brian:brian, brianBook:brianBook, brianDo:brianDo,
     reviewLink:reviewLink, setReviewLink:setReviewLink, reviews:reviews, reviewFor:reviewFor, reviewQueue:reviewQueue, reviewMessage:reviewMessage,
     reviewAsk:reviewAsk, reviewSkip:reviewSkip, PITCH:PITCH, geoLenFt:geoLenFt, geoAreaSqft:geoAreaSqft, measures:measures, measuresFor:measuresFor,
     addMeasure:addMeasure, deleteMeasure:deleteMeasure, aiDraftEstimate:aiDraftEstimate, priceDraft:priceDraft, techCostPerHr:techCostPerHr,

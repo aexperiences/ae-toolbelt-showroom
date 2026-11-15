@@ -74,6 +74,11 @@
       S.toast("Saved as an estimate.","ok"); out.innerHTML=""; render(); };
   }
   renderAi();
+  /* Brian can hand a job over: estimates.html?ai=<what he heard>&c=<customer>&t=<trade> fills the draft and starts it */
+  (function(){ var u=new URLSearchParams(location.search), t=u.get("ai"); if(!t) return;
+    if(u.get("c")) aiHost.querySelector("#aiCust").value=u.get("c");
+    if(u.get("t")&&[].some.call(aiHost.querySelector("#aiTrade").options,function(o){ return o.value===u.get("t"); })) aiHost.querySelector("#aiTrade").value=u.get("t");
+    aiHost.querySelector("#aiText").value=t; aiHost.scrollIntoView({block:"start"}); aiHost.querySelector("#aiGo").click(); })();
 
   function render(){
     host.innerHTML="";

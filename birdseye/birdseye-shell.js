@@ -397,6 +397,14 @@
   /* the helper — a hidden tab on the right edge; everything still works by hand */
   function paintDrawer() {
     var h = C.helper;
+    /* A SYSTEM CAN DRAW ITS OWN HELPER (Nov 15 2026, Toolbelt's Brian): when the profile gives helper.panel, the shell
+       keeps the header and the close button and hands the body to the system, which owns talk, cards and "Do it". */
+    if (typeof h.panel === "function" && els.drawer.__panel) return;
+    if (typeof h.panel === "function") {
+      els.drawer.innerHTML = '<div class="bs-dh">' + iimg("", "os-icon", C.brand.icon) + '<div><b>' + esc(h.name) + "</b><span>" + esc(h.role || "") + '</span></div><button type="button" class="bs-iconbtn" id="bsDX" aria-label="Close the helper">✕</button></div><div class="bs-dpanel" id="bsDPanel"></div>';
+      els.drawer.querySelector("#bsDX").onclick = function () { openDrawer(false); };
+      try { h.panel(els.drawer.querySelector("#bsDPanel"), E, H); els.drawer.__panel = true; return; } catch (e) { if (window.console) console.warn("[birdseye] helper panel", e); }
+    }
     els.drawer.innerHTML = '<div class="bs-dh">' + iimg("", "os-icon", C.brand.icon) + '<div><b>' + esc(h.name) + "</b><span>" + esc(h.role || "Ask in plain words. Nothing happens without your tap.") + '</span></div><button type="button" class="bs-iconbtn" id="bsDX" aria-label="Close the helper">✕</button></div>' +
       '<div class="bs-dlog" id="bsDLog"><p class="bs-mut">' + esc(h.hello || ("Ask " + h.name + " anything about " + houseName() + ".")) + "</p></div>" +
       '<form class="bs-dform" id="bsDForm"><input id="bsDQ" type="text" placeholder="Ask ' + esc(h.name) + '…" aria-label="Ask ' + esc(h.name) + '"><button type="submit" class="bs-btn bs-a">Ask</button></form>';
