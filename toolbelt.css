@@ -711,7 +711,7 @@ body{--room:var(--tang)}
 .pagehead .sub{font-size:14.5px;color:var(--ink-2)}
 .card{border-radius:16px}
 .card > h2,.card .cardhead h2{font-size:17px;display:flex;align-items:center;gap:9px}
-.card > h2::before,.card .cardhead h2::before{content:"";width:10px;height:10px;border-radius:3px;background:var(--room);flex:none}
+.card > h2::before,.card .cardhead h2::before{content:"" !important;width:10px !important;height:10px !important;border-radius:3px !important;background:var(--room) !important;flex:none}
 .stat{border-radius:14px;border-top:4px solid color-mix(in srgb,var(--room) 70%,#fff)}
 .stat.good{background:color-mix(in srgb,var(--good) 10%,#fff);border-top-color:var(--good)}
 .stat.watch{background:color-mix(in srgb,var(--watch) 13%,#fff);border-top-color:var(--watch)}
