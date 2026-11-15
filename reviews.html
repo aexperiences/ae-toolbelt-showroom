@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reviews · Toolbelt OS</title>
+<meta name="description" content="After every job, ask the customer for a review in one tap. Toolbelt keeps who was asked so nobody is asked twice.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/reviews.html">
+<meta property="og:title" content="Reviews · Toolbelt OS">
+<meta property="og:description" content="After every job, ask the customer for a review in one tap. Toolbelt keeps who was asked so nobody is asked twice.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+<style>
+.rv-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line-2);font-size:14px}
+.rv-row:first-of-type{border-top:0}
+.rv-row>div:first-child{flex:1 1 220px;min-width:0}
+.rv-btns{display:flex;gap:8px;flex-wrap:wrap}
+.rv-link{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.rv-link input{flex:1 1 240px;min-width:0}
+.rv-msg{background:var(--tang-wash,#f7ead9);border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.5;margin-top:10px}
+</style>
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S=window.Toolbelt;
+  var content=S.mount({ active:"reviews.html", crumb:"Reviews" });
+  content.appendChild(S.page("Reviews","After a job closes, ask the customer for a review while it is fresh. One tap opens a ready text or email; nobody gets asked twice.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+  function phoneDigits(p){ return String(p||"").replace(/[^0-9+]/g,""); }
+  function render(){
+    host.innerHTML="";
+    var link=S.reviewLink(), office=S.seesMoney(), q=S.reviewQueue(30), done=S.reviews().slice().reverse();
+    var asked=done.filter(function(r){ return r.via!=="skipped"; }).length;
+    host.appendChild(S.card('<div class="stats">'+
+      S.stat("Waiting to be asked",q.length,"Closed jobs, last 30 days",q.length?"watch":"")+
+      S.stat("Asked",asked,"All time")+
+      S.stat("Review link",link?"Set":"Not set",link?"Customers land on it":"Paste it below",link?"good":"bad")+'</div>'));
+    host.appendChild(S.card('<h2>Your review link</h2>'+
+      '<p class="sub">The page where customers leave a review: your Google Business profile review link, Facebook, or any page you choose.</p>'+
+      (office?'<div class="rv-link"><input id="rvLink" type="url" inputmode="url" placeholder="https://g.page/r/your-business/review" value="'+S.esc(link)+'">'+
+        '<button class="btn tang" id="rvSave">Save</button></div>'
+        :(link?'<p class="mono small" style="word-break:break-all">'+S.esc(link)+'</p>':'<p class="muted">The owner or the office sets this.</p>'))+
+      '<div class="note">On Google: open your Business Profile, choose "Ask for reviews," copy the link, paste it here.</div>'));
+    host.appendChild(S.card('<h2>Ready to ask</h2>'+
+      (!q.length?'<p class="muted">Every closed job in the last 30 days has been asked.</p>':
+      q.map(function(j){ var c=S.customerById(j.customerId)||{}, t=S.techById(j.techId), ph=phoneDigits(c.phone), msg=S.reviewMessage(j.id);
+        return '<div class="rv-row"><div><b>'+S.esc(c.name||"Customer")+'</b><div class="muted small">'+S.esc(j.task||"")+' · '+S.dayLabel(j.date)+(t?' · '+S.esc(t.name):'')+'</div></div>'+
+          '<div class="rv-btns">'+
+          (link?(ph?'<a class="btn tang sm" data-ask="'+S.esc(j.id)+'" data-via="text" href="sms:'+S.esc(ph)+'?&body='+encodeURIComponent(msg)+'">Text it</a>':'')+
+            (c.email?'<a class="btn ghost sm" data-ask="'+S.esc(j.id)+'" data-via="email" href="mailto:'+S.esc(c.email)+'?subject='+encodeURIComponent("Thank you from "+((S.db().shop||{}).name||"us"))+'&body='+encodeURIComponent(msg)+'">Email it</a>':'')+
+            '<button class="btn ghost sm" data-copy="'+S.esc(j.id)+'">Copy the message</button>'
+            :'<span class="muted small">Set the review link first</span>')+
+          '<button class="btn ghost sm" data-skip="'+S.esc(j.id)+'">Skip</button></div></div>'; }).join(""))+
+      (q.length&&link?'<div class="rv-msg"><b>What they get:</b> '+S.esc(S.reviewMessage(q[0].id))+'</div>':'')));
+    host.appendChild(S.card('<h2>Asked</h2>'+(!done.length?'<p class="muted">Nobody yet.</p>':
+      '<div class="tablewrap"><table><thead><tr><th>Customer</th><th>Job</th><th>Asked</th><th>How</th></tr></thead><tbody>'+
+      done.slice(0,40).map(function(r){ var c=S.customerById(r.customerId)||{}, j=S.jobById(r.jobId)||{};
+        return '<tr><td>'+S.esc(c.name||"")+'</td><td class="small">'+S.esc(j.task||"")+'</td><td class="mono small">'+S.esc(String(r.at).replace("T"," "))+'</td><td>'+(r.via==="skipped"?'<span class="muted">Skipped</span>':S.esc(r.via))+'</td></tr>'; }).join("")+
+      '</tbody></table></div>')+
+      '<div class="note">Toolbelt does not see whether they left the review; that lives on Google or wherever your link goes.</div>'));
+    var sv=host.querySelector("#rvSave"); if(sv) sv.onclick=function(){ var r=S.setReviewLink(host.querySelector("#rvLink").value);
+      S.toast(r.ok?"Review link saved.":r.why, r.ok?"ok":"bad"); if(r.ok) render(); };
+    host.querySelectorAll("[data-ask]").forEach(function(a){ a.addEventListener("click",function(){ var id=a.getAttribute("data-ask"), via=a.getAttribute("data-via");
+      setTimeout(function(){ S.reviewAsk(id,via); S.toast("Marked as asked.","ok"); render(); },300); }); });
+    host.querySelectorAll("[data-copy]").forEach(function(b){ b.onclick=function(){ var id=b.getAttribute("data-copy"), msg=S.reviewMessage(id);
+      function ok(){ S.reviewAsk(id,"copied"); S.toast("Message copied and marked as asked.","ok"); render(); }
+      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(msg).then(ok,function(){ prompt("Copy this message:",msg); ok(); });
+      else { prompt("Copy this message:",msg); ok(); } }; });
+    host.querySelectorAll("[data-skip]").forEach(function(b){ b.onclick=function(){ S.reviewSkip(b.getAttribute("data-skip")); S.toast("Skipped.","ok"); render(); }; });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

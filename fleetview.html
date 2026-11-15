@@ -15,9 +15,14 @@
 <link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
 <meta name="theme-color" content="#e4832b">
 <link rel="stylesheet" href="toolbelt.css">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<script src="vendor/leaflet/leaflet.js"></script>
 <style>
   .fmapwrap{position:relative;background:var(--sunk);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;}
   .fmap{display:block;width:100%;height:auto;}
+  .flive{height:460px;width:100%}
+  .flive .leaflet-tooltip{font-weight:700;padding:2px 6px;font-size:12px}
+  @media(max-width:640px){.flive{height:380px}}
   .flegend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--ink-2);}
   .flegend span{display:inline-flex;align-items:center;gap:6px;}
   .fdot{width:11px;height:11px;border-radius:50%;display:inline-block;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);}
@@ -127,7 +132,7 @@
              S.esc((f.tech&&f.tech.name||"").split(" ")[0])+'</text>');
     });
 
-    return '<div class="fmapwrap"><svg class="fmap" viewBox="0 0 '+W+' '+H+'" role="img" ' +
+    return '<div class="fmapwrap"><div id="fleetLiveSlot"></div><svg class="fmap" id="fleetSvg" viewBox="0 0 '+W+' '+H+'" role="img" ' +
       'aria-label="Plot of truck positions across the service area"><rect width="'+W+'" height="'+H+'" fill="#e9edf1"/>'+
       g.join("")+'</svg></div>'+
       '<div class="flegend">'+
@@ -140,6 +145,33 @@
         '<span><i class="fdot" style="background:#fff;border-color:#8391a0"></i>Today’s job sites</span>'+
         '<span><i class="fdot" style="background:transparent;border-color:#2f8f6b;box-shadow:none"></i>Green ring: live from the phone</span>'+
       '</div>';
+  }
+
+  /* STREET MAP — the same trucks, job sites and shop on real streets (OpenStreetMap). The map is built once and
+     moved back into the card on every refresh, so it keeps its zoom. With no signal the plot above stays. */
+  var lmEl=null, lmap=null, lmLayer=null, lmFit=false;
+  function mountLive(states){
+    var slot=document.getElementById("fleetLiveSlot"), svg=document.getElementById("fleetSvg");
+    if(!slot || !window.L) return;
+    if(!lmEl){ lmEl=document.createElement("div"); lmEl.className="flive"; lmEl.setAttribute("aria-label","Street map of truck positions");
+      slot.appendChild(lmEl);
+      var sh=S.db().shop||{};
+      lmap=L.map(lmEl,{ scrollWheelZoom:false, keyboard:false }).setView([sh.lat||47.718, sh.lng||-116.95], 11);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{ maxZoom:19, attribution:"© OpenStreetMap contributors" })
+        .on("tileerror",function(){ if(svg) svg.style.display=""; }).addTo(lmap);
+      lmLayer=L.layerGroup().addTo(lmap);
+    } else slot.appendChild(lmEl);
+    if(svg) svg.style.display="none";
+    lmLayer.clearLayers(); var pts=[], sh=S.db().shop||{};
+    if(sh.lat!==undefined){ L.circleMarker([sh.lat,sh.lng],{ radius:9, color:"#232b33", fillColor:"#232b33", fillOpacity:1, weight:2 }).bindTooltip("The shop").addTo(lmLayer); pts.push([sh.lat,sh.lng]); }
+    states.forEach(function(f){ if(!f.job) return; var c=S.customerById(f.job.customerId); if(!c||c.lat===undefined) return;
+      L.circleMarker([c.lat,c.lng],{ radius:6, color:"#8391a0", fillColor:"#fff", fillOpacity:1, weight:2 }).bindTooltip(S.esc(c.name)).addTo(lmLayer); pts.push([c.lat,c.lng]); });
+    states.forEach(function(f){ if(!f.truck.ping) return; var ll=[f.truck.ping.lat,f.truck.ping.lng];
+      if(f.truck.live) L.circleMarker(ll,{ radius:15, color:"#2f8f6b", weight:3, fill:false }).addTo(lmLayer);
+      L.circleMarker(ll,{ radius:9, color:"#fff", weight:3, fillColor:colorFor(f.status), fillOpacity:1 })
+        .bindTooltip(S.esc(String(f.truck.label).replace(/[^0-9]/g,""))+" "+S.esc((f.tech&&f.tech.name||"").split(" ")[0]),{ permanent:true, direction:"right", offset:[8,0] })
+        .addTo(lmLayer); pts.push(ll); });
+    setTimeout(function(){ lmap.invalidateSize(); if(!lmFit && pts.length>1){ lmap.fitBounds(pts,{ padding:[30,30] }); lmFit=true; } },0);
   }
 
   function ago(ts){ var m=Math.max(0,Math.round((Date.now()-ts)/60000)); return m<1?"just now":m+" min ago"; }
@@ -187,7 +219,7 @@
     host.appendChild(S.card('<h2>The board, on a map</h2>'+
       '<p class="sub">'+(nLive ? nLive+' truck'+(nLive>1?'s are':' is')+' live from the phone right now (green ring). The rest show the sample position from '+S.esc(S.FLEET_CLOCK)+'.'
         : 'Sample positions from '+S.esc(S.FLEET_CLOCK)+'. Turn on live tracking above to see real phones here.')+
-      ' This plot places real coordinates; it does not draw roads.</p>'+
+      ' Street map © OpenStreetMap contributors.</p>'+
       buildMap(states)));
 
     host.appendChild(S.card('<h2>Every truck</h2>'+
@@ -268,7 +300,7 @@
     host.appendChild(S.card('<h2>What ships standard, and what is wired at purchase</h2>'+
       '<p class="sub"><b>Standard, in this room:</b> phone-GPS positions off the branded technician app, on-my-way links, ' +
       'arrive/leave geofence stamps and maintenance intervals. There is no hardware to buy and no per-truck subscription.</p>'+
-      '<p class="sub"><b>Wired at purchase:</b> street map tiles for this floor, and — only if you want vehicle-level telemetry ' +
+      '<p class="sub"><b>Wired at purchase:</b> only if you want vehicle-level telemetry ' +
       '(engine hours, harsh braking, idling) — an in-vehicle device per truck. <b>Vehicle telemetry, from '+S.money(1200)+' plus hardware.</b> ' +
       'Most shops never need it; the phone in the tech’s pocket is already in the truck.</p>'+
       '<p class="sub muted small">Until live tracking is turned on, this floor runs on a sample fleet at a pinned sample clock, and no position belongs to a real vehicle or person. A live phone is real: it shows only while that person has the Driver page open and sharing.</p>'));
@@ -281,6 +313,7 @@
       function done(){ S.toast("Link copied. Paste it in a text to "+b.dataset.name+".","ok"); }
       if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done,function(){ prompt("Copy this link:",link); });
       else prompt("Copy this link:",link); }; });
+    mountLive(states);
     host.querySelectorAll("[data-omw]").forEach(function(b){ b.onclick=function(){
       S.sendOnMyWay(b.dataset.omw);
       S.toast("On-my-way sent — the customer has a live ETA.","ok"); render(); }; });

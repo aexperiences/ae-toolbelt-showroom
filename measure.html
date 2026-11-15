@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Measure · Toolbelt OS</title>
+<meta name="description" content="Measure a roof, a yard or a run of fence from the aerial photo: square feet and linear feet, saved to the customer.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/measure.html">
+<meta property="og:title" content="Measure · Toolbelt OS">
+<meta property="og:description" content="Measure a roof, a yard or a run of fence from the aerial photo: square feet and linear feet, saved to the customer.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+<style>
+.ms-map{height:62vh;min-height:380px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#dfe5ea}
+.ms-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+.ms-bar .fld{margin:0;flex:1 1 160px;min-width:0}
+.ms-find{display:flex;gap:8px;flex:2 1 280px}
+.ms-find input{flex:1;min-width:0}
+.ms-read{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.ms-read div{background:var(--card-2,#f6f3ee);border-radius:12px;padding:10px 12px}
+.ms-read b{display:block;font-size:22px;font-family:var(--mono,ui-monospace,Menlo,monospace)}
+.ms-read span{font-size:12px;color:var(--mut)}
+.ms-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.ms-mode{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.ms-mode button{border:0;background:transparent;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer;color:var(--ink)}
+.ms-mode button.on{background:var(--tang,#e4832b);color:#fff}
+.ms-pt{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #e4832b;box-sizing:border-box}
+@media(max-width:560px){.ms-read{grid-template-columns:1fr 1fr}.ms-read b{font-size:19px}.ms-map{height:54vh}}
+</style>
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<script src="vendor/leaflet/leaflet.js"></script>
+<script>
+(function(){
+  var S=window.Toolbelt;
+  var content=S.mount({ active:"measure.html", crumb:"Measure" });
+  content.appendChild(S.page("Measure","Find the address, tap the corners on the aerial photo, and get the square feet. Tap along a line for linear feet. Saved to the customer.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+  var shop=S.db().shop||{}, cs=S.db().customers||[];
+  var q=new URLSearchParams(location.search), startC=S.customerById(q.get("c"));
+  host.innerHTML='';
+  var tool=S.card('<div class="ms-bar">'+
+      '<div class="fld"><label for="msCust">Customer</label><select id="msCust"><option value="">No customer</option>'+
+        cs.map(function(c){ return '<option value="'+S.esc(c.id)+'"'+(startC&&startC.id===c.id?' selected':'')+'>'+S.esc(c.name)+'</option>'; }).join("")+'</select></div>'+
+      '<div class="ms-find"><div class="fld" style="flex:1;margin:0"><label for="msAddr">Address</label><input id="msAddr" type="search" placeholder="812 Lakeshore Dr, Coeur d\'Alene, ID"></div>'+
+        '<button class="btn" id="msGo" style="align-self:flex-end">Find</button></div>'+
+    '</div>'+
+    '<div class="ms-bar"><div class="ms-mode" role="group" aria-label="What to measure"><button id="mdArea" class="on">Area</button><button id="mdLine">Length</button></div>'+
+      '<div class="fld" id="pitchWrap"><label for="msPitch">Roof pitch</label><select id="msPitch">'+S.PITCH.map(function(p){ return '<option>'+p[0]+'</option>'; }).join("")+'</select></div>'+
+      '<div class="fld"><label for="msLayer">Picture</label><select id="msLayer"><option value="air">Aerial photo</option><option value="map">Street map</option></select></div></div>'+
+    '<div class="ms-map" id="msMap" role="application" aria-label="Map. Tap to add a point."></div>'+
+    '<div class="ms-read"><div><b id="rA">—</b><span id="rAl">Flat area, sq ft</span></div><div><b id="rB">—</b><span id="rBl">Roof surface, sq ft</span></div><div><b id="rC">—</b><span id="rCl">Around the edge, ft</span></div></div>'+
+    '<div class="ms-btns"><button class="btn ghost" id="msUndo">Undo point</button><button class="btn ghost" id="msClear">Start over</button>'+
+      '<div class="fld" style="margin:0;flex:1 1 180px"><input id="msLabel" type="text" maxlength="80" placeholder="Name it: Main roof, Back fence…" aria-label="Name this measurement"></div>'+
+      '<button class="btn tang" id="msSave">Save</button></div>'+
+    '<div class="note">Aerial photos are the USDA farm-survey photos (public domain, about two feet per pixel, a few years old). Good for a quote; confirm on site before you order material. A roof\'s pitch cannot be seen from above, so pick it.</div>'+
+    '<div class="srcnote muted small" style="margin-top:6px">Aerial: USDA NAIP via USGS The National Map. Street map and address search: © OpenStreetMap contributors.</div>');
+  host.appendChild(tool);
+  var listCard=document.createElement("div"); host.appendChild(listCard);
+
+  var mode="area", pts=[], marks=[], shape=null, map=null;
+  var $=function(id){ return document.getElementById(id); };
+  function fmt(n){ return Math.round(n).toLocaleString(); }
+  function pitchMult(){ var v=$("msPitch").value; return (S.PITCH.filter(function(p){ return p[0]===v; })[0]||[0,1])[1]; }
+  function readout(){
+    if(mode==="area"){ var a=pts.length>=3?S.geoAreaSqft(pts):0, per=pts.length>=2?S.geoLenFt(pts.length>=3?pts.concat([pts[0]]):pts):0;
+      $("rA").textContent=a?fmt(a):"—"; $("rB").textContent=a?fmt(a*pitchMult()):"—"; $("rC").textContent=per?fmt(per):"—";
+      $("rAl").textContent="Flat area, sq ft"; $("rBl").textContent="Roof surface, sq ft"; $("rCl").textContent="Around the edge, ft";
+      $("rB").parentNode.style.display=""; }
+    else { var l=pts.length>=2?S.geoLenFt(pts):0; $("rA").textContent=l?fmt(l):"—"; $("rAl").textContent="Length, ft";
+      $("rC").textContent=pts.length>1?String(pts.length-1):"—"; $("rCl").textContent="Straight runs"; $("rB").parentNode.style.display="none"; }
+  }
+  function redraw(){
+    if(!map) return; if(shape){ map.removeLayer(shape); shape=null; }
+    if(pts.length>=2) shape=(mode==="area"&&pts.length>=3?L.polygon(pts,{color:"#e4832b",weight:3,fillOpacity:.22}):L.polyline(pts,{color:"#e4832b",weight:3})).addTo(map);
+    readout();
+  }
+  function addPt(ll){ pts.push([ll.lat,ll.lng]);
+    marks.push(L.marker(ll,{ icon:L.divIcon({ className:"", html:'<div class="ms-pt"></div>', iconSize:[14,14], iconAnchor:[7,7] }), keyboard:false, interactive:false }).addTo(map)); redraw(); }
+  function clear(){ pts=[]; marks.forEach(function(m){ map.removeLayer(m); }); marks=[]; redraw(); }
+
+  /* the aerial layer: USDA NAIP from USGS, asked for one 256-pixel square at a time */
+  var NaipLayer = window.L ? L.TileLayer.extend({ getTileUrl:function(c){
+    var z=this._getZoomForUrl(), n=Math.pow(2,z), sz=2*Math.PI*6378137/n, o=-Math.PI*6378137;
+    var x0=o+c.x*sz, x1=x0+sz, y1=-o-c.y*sz, y0=y1-sz;
+    return "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPPlus/ImageServer/exportImage?bbox="+[x0,y0,x1,y1].map(function(v){ return v.toFixed(2); }).join(",")+
+      "&bboxSR=3857&imageSR=3857&size=256,256&format=jpg&f=image"; } }) : null;
+  var air=null, streets=null;
+  function center(){ var c=S.customerById($("msCust").value); return c&&c.lat!==undefined?[c.lat,c.lng]:[shop.lat||47.718,shop.lng||-116.95]; }
+  if(!window.L){ $("msMap").innerHTML='<p class="muted" style="padding:16px">The map could not load. It needs signal.</p>'; }
+  else {
+    map=L.map("msMap",{ zoomControl:true, maxZoom:21, doubleClickZoom:false, keyboard:false }).setView(center(), startC?19:17);
+    air=new NaipLayer("",{ maxZoom:21, maxNativeZoom:19, attribution:"USDA NAIP · USGS" }).addTo(map);
+    streets=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{ maxZoom:21, maxNativeZoom:19, attribution:"© OpenStreetMap contributors" });
+    map.on("click",function(e){ addPt(e.latlng); });
+  }
+  $("msLayer").onchange=function(){ if(!map) return; if(this.value==="map"){ map.removeLayer(air); streets.addTo(map); } else { map.removeLayer(streets); air.addTo(map); } };
+  $("msCust").onchange=function(){ if(map){ map.setView(center(),19); } renderList(); };
+  $("mdArea").onclick=function(){ mode="area"; this.classList.add("on"); $("mdLine").classList.remove("on"); $("pitchWrap").style.display=""; redraw(); };
+  $("mdLine").onclick=function(){ mode="line"; this.classList.add("on"); $("mdArea").classList.remove("on"); $("pitchWrap").style.display="none"; redraw(); };
+  $("msPitch").onchange=readout;
+  $("msUndo").onclick=function(){ if(!pts.length) return; pts.pop(); var m=marks.pop(); if(m) map.removeLayer(m); redraw(); };
+  $("msClear").onclick=clear;
+  function find(){ var a=$("msAddr").value.trim(); if(!a) return; $("msGo").disabled=true;
+    fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q="+encodeURIComponent(a),{ headers:{ "Accept":"application/json" } })
+      .then(function(r){ return r.json(); }).then(function(j){ $("msGo").disabled=false;
+        if(!j||!j.length) return S.toast("That address was not found. Try adding the city and state.","bad");
+        map.setView([+j[0].lat,+j[0].lon],19); clear(); })
+      .catch(function(){ $("msGo").disabled=false; S.toast("Address search needs signal.","bad"); }); }
+  $("msGo").onclick=find; $("msAddr").addEventListener("keydown",function(e){ if(e.key==="Enter") find(); });
+  $("msSave").onclick=function(){
+    var r=S.addMeasure({ customerId:$("msCust").value||null, kind:mode, pts:pts, pitch:$("msPitch").value, label:$("msLabel").value||(mode==="area"?"Area":"Length") });
+    if(!r.ok) return S.toast(r.why,"bad");
+    S.toast("Saved"+(r.measure.customerId?" to "+(S.customerById(r.measure.customerId)||{}).name:"")+".","ok"); $("msLabel").value=""; clear(); renderList(); };
+  function renderList(){
+    var cid=$("msCust").value, list=cid?S.measuresFor(cid):S.measures().slice(0,20);
+    listCard.innerHTML=""; listCard.appendChild(S.card('<h2>'+(cid?'Saved for '+S.esc((S.customerById(cid)||{}).name):'Recent measurements')+'</h2>'+
+      (!list.length?'<p class="muted">Nothing saved yet.</p>':'<div class="tablewrap"><table><thead><tr><th>What</th><th class="right">Measure</th><th></th></tr></thead><tbody>'+
+      list.map(function(m){ var c=S.customerById(m.customerId);
+        return '<tr><td><b>'+S.esc(m.label)+'</b><div class="muted small">'+(c?S.esc(c.name)+' · ':'')+S.esc(String(m.at).slice(0,10))+(m.kind==="area"&&m.pitch!=="Flat"?' · pitch '+S.esc(m.pitch):'')+'</div></td>'+
+          '<td class="right mono">'+(m.kind==="area"?fmt(m.surfaceSqft)+' sq ft<div class="muted small">'+fmt(m.lengthFt)+' ft around</div>':fmt(m.lengthFt)+' ft')+'</td>'+
+          '<td class="right"><a class="btn ghost sm" href="estimates.html?measure='+encodeURIComponent(m.id)+'">Estimate</a> <button class="btn ghost sm" data-del="'+S.esc(m.id)+'" aria-label="Delete">✕</button></td></tr>'; }).join("")+
+      '</tbody></table></div>')));
+    listCard.querySelectorAll("[data-del]").forEach(function(b){ b.onclick=function(){ S.deleteMeasure(b.getAttribute("data-del")); renderList(); }; });
+  }
+  readout(); renderList();
+  window.__msTest={ add:function(lat,lng){ addPt({lat:lat,lng:lng}); }, pts:function(){ return pts; } };
+})();
+</script>
+</body>
+</html>

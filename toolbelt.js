@@ -1357,6 +1357,90 @@
   }
 
 
+
+  /* ====================================================================
+     REVIEW REQUESTS — after a job closes, ask the customer for a review.
+     The shop pastes its own review link once (Google, Facebook, anywhere).
+     The message goes out from the office phone or email app; Toolbelt keeps
+     who was asked and when, so nobody is asked twice.
+     ==================================================================== */
+  function reviewLink(){ return (db().shop||{}).reviewLink || ""; }
+  function setReviewLink(u){ u=String(u||"").trim();
+    if(u && !/^https:\/\/[^\s]+$/i.test(u)) return { ok:false, why:"Paste the full link, starting with https://" };
+    save(function(d){ d.shop.reviewLink=u; logBus(d,"Reviews", u?"Review link set":"Review link cleared"); }); return { ok:true }; }
+  function reviews(){ var d=db(); if(!d.reviews){ d.reviews=[]; write(d); } return d.reviews; }
+  function reviewFor(jobId){ return reviews().filter(function(r){ return r.jobId===jobId; })[0]||null; }
+  function reviewQueue(days){ days=days||30; var since=iso(addDays(TODAY,-days)), today=iso(TODAY);
+    return (db().jobs||[]).filter(function(j){ return j.status==="Closed" && j.customerId && j.date>=since && j.date<=today && !reviewFor(j.id); })
+      .sort(function(a,b){ return a.date<b.date?1:-1; }); }
+  function reviewMessage(jobId){ var j=jobById(jobId)||{}, c=customerById(j.customerId)||{}, sh=db().shop||{};
+    var first=String(c.name||"").split(" ")[0]||"there", who=(techById(j.techId)||{}).name;
+    return "Hi "+first+", thank you for having "+(sh.name||"us")+" out"+(who?" ("+who.split(" ")[0]+" was your tech)":"")+
+      ". If we did right by you, would you leave us a quick review? It helps a local shop more than you know: "+reviewLink(); }
+  function reviewAsk(jobId, via){ var j=jobById(jobId); if(!j) return { ok:false, why:"That job is gone." };
+    if(!reviewLink()) return { ok:false, why:"Paste your review link first." };
+    reviews(); save(function(d){ d.reviews.push({ jobId:jobId, customerId:j.customerId, at:localStamp(), via:via||"text" });
+      logBus(d,"Reviews","Review asked of "+((customerById(j.customerId)||{}).name||"a customer")+" by "+(via||"text")); });
+    return { ok:true }; }
+  function reviewSkip(jobId){ var j=jobById(jobId); if(!j) return { ok:false };
+    reviews(); save(function(d){ d.reviews.push({ jobId:jobId, customerId:j.customerId, at:localStamp(), via:"skipped" }); }); return { ok:true }; }
+
+  /* ====================================================================
+     MEASURE — draw on the aerial photo, get square feet and linear feet.
+     Area and length are worked out on the ground (spherical geometry), not
+     on the screen, so they hold at any zoom. A roof's pitch multiplies the
+     flat footprint into roof surface. Saved to the customer.
+     ==================================================================== */
+  var PITCH = [["Flat",1],["3/12",1.031],["4/12",1.054],["5/12",1.083],["6/12",1.118],["7/12",1.158],["8/12",1.202],["9/12",1.25],["10/12",1.302],["12/12",1.414]];
+  var EARTH_R=6378137, FT=3.28084;
+  function geoLenFt(pts){ var t=0; for(var i=1;i<pts.length;i++) t+=hav(pts[i-1],pts[i]); return t*FT; }
+  function hav(a,b){ var r=Math.PI/180, dLa=(b[0]-a[0])*r, dLo=(b[1]-a[1])*r, x=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dLo/2)*Math.sin(dLo/2);
+    return 2*EARTH_R*Math.asin(Math.min(1,Math.sqrt(x))); }
+  function geoAreaSqft(pts){ if(pts.length<3) return 0; var r=Math.PI/180, a=0;
+    for(var i=0;i<pts.length;i++){ var p=pts[i], q=pts[(i+1)%pts.length]; a+=(q[1]-p[1])*r*(2+Math.sin(p[0]*r)+Math.sin(q[0]*r)); }
+    return Math.abs(a*EARTH_R*EARTH_R/2)*FT*FT; }
+  function measures(){ var d=db(); if(!d.measures){ d.measures=[]; write(d); } return d.measures; }
+  function measuresFor(cid){ return measures().filter(function(m){ return m.customerId===cid; }); }
+  function addMeasure(rec){ if(!rec || !rec.pts || rec.pts.length<2) return { ok:false, why:"Tap at least two points." };
+    var kind=rec.kind==="line"?"line":"area", pts=rec.pts.map(function(p){ return [+(+p[0]).toFixed(7), +(+p[1]).toFixed(7)]; });
+    if(kind==="area" && pts.length<3) return { ok:false, why:"An area needs three points or more." };
+    var pitch=PITCH.filter(function(x){ return x[0]===rec.pitch; })[0]||PITCH[0];
+    var out={ id:"m"+Date.now().toString(36), customerId:rec.customerId||null, label:String(rec.label||(kind==="area"?"Area":"Length")).slice(0,80),
+      kind:kind, pts:pts, at:localStamp(),
+      lengthFt: kind==="line" ? geoLenFt(pts) : geoLenFt(pts.concat([pts[0]])),
+      sqft: kind==="area" ? geoAreaSqft(pts) : 0, pitch:pitch[0] };
+    out.surfaceSqft = out.sqft*pitch[1];
+    measures(); save(function(d){ d.measures.unshift(out); logBus(d,"Measure","Measured "+out.label+" — "+(kind==="area"?Math.round(out.surfaceSqft)+" sq ft":Math.round(out.lengthFt)+" ft")); });
+    return { ok:true, measure:out }; }
+  function deleteMeasure(id){ save(function(d){ d.measures=(d.measures||[]).filter(function(m){ return m.id!==id; }); }); return { ok:true }; }
+
+  /* ====================================================================
+     AI DRAFT ESTIMATE — describe the job, get a draft scope.
+     The AI only picks from THIS shop's own parts list and guesses labor
+     hours. Every dollar is worked out here from the shop's own costs, markup
+     and labor rate; the AI never names a price. The office edits and decides.
+     ==================================================================== */
+  var AI_API = (typeof location!=="undefined" && /(^|\.)aexperiences\.studio$/.test(location.hostname)) ? "/api/os-estimate-ai" : "https://aexperiences.studio/api/os-estimate-ai";
+  function techCostPerHr(){ var ts=db().techs||[], n=0, t=0; ts.forEach(function(x){ if(Number(x.payRate)){ t+=Number(x.payRate); n++; } });
+    return n ? (t/n)*(1+RATES.burdenPct) : 0; }
+  function priceDraft(draft){ var parts=db().parts||[], lines=[], pc=0;
+    (draft.parts||[]).forEach(function(x){ var p=parts.filter(function(q){ return q.sku===x.sku; })[0]; if(!p) return;
+      var qty=Math.max(1,Math.min(999,Math.round(Number(x.qty)||1))); pc+=p.cost*qty;
+      lines.push({ sku:p.sku, name:p.name, qty:qty, cost:p.cost*qty, price:p.cost*qty*RATES.partsMarkup }); });
+    var hrs=Math.max(0,Math.min(400,Number(draft.laborHours)||0)), lc=hrs*techCostPerHr(), lp=hrs*RATES.laborBillPerHr;
+    var cost=pc+lc, price=pc*RATES.partsMarkup+lp;
+    return { lines:lines, hours:hrs, partsCost:pc, laborCost:lc, cost:cost, price:price, laborPrice:lp }; }
+  function aiDraftEstimate(text, trade, extra){
+    var parts=(db().parts||[]).map(function(p){ return { sku:p.sku, name:p.name, trade:p.trade }; });
+    return fetch(AI_API,{ method:"POST", headers:{ "content-type":"application/json" }, cache:"no-store",
+      body:JSON.stringify({ text:String(text||"").slice(0,1500), trade:trade||"", extra:String(extra||"").slice(0,400), parts:parts.slice(0,400) }) })
+      .then(function(r){ return r.json().then(function(j){ return { s:r.status, j:j }; }); })
+      .then(function(x){ if(!x.j || !x.j.ok){ var w = x.s===429 ? "Too many drafts for now. Try again in a little while."
+          : x.s===503 ? "The AI helper is not connected right now." : "The AI helper did not answer. Try again.";
+          return { ok:false, why:w }; }
+        var dr=x.j.draft||{}; return { ok:true, draft:dr, priced:priceDraft(dr) }; })
+      .catch(function(){ return { ok:false, why:"No connection. The AI helper needs signal." }; }); }
+
   /* ====================================================================
      TIME CLOCK — the paid day, not only the job.
      Job stamps (above) prove the visit. Punches are the whole shift: shop
@@ -2037,6 +2121,8 @@
       { href:"fleetview.html",label:"FleetView · Trucks",ic:"◍", room:"fleet",  accent:"dispatch", icon:"icons/fleetview.svg" } ]},
     { group:"Growth", items:[
       { href:"estimates.html", label:"Estimates",       ic:"✦", room:"estimate", accent:"estimate" , icon:"icons/funnel.svg"},
+      { href:"measure.html",   label:"Measure",         ic:"▱", accent:"estimate", icon:"icons/measure.svg" },
+      { href:"reviews.html",   label:"Reviews",         ic:"★", accent:"estimate", icon:"icons/reviews.svg" },
       { href:"plans.html",     label:"Service Plans",   ic:"❉", room:"plans",    accent:"money" , icon:"icons/tuition.svg"},
       { href:"referrals.html", label:"Referral CRM",    ic:"◈", room:"crm",      accent:"crm", icon:"icons/referral-crm.svg" },
       { href:"portal.html",    label:"Customer Portal", ic:"☗", room:"portal",   accent:"portal", icon:"icons/customer-portal.svg" },
@@ -2311,6 +2397,9 @@
     { t:"Checkpoints — the job cannot close undocumented", c:"Every job carries a short stage checklist: what to photograph before anyone touches the equipment, the trade-specific step that matters in the middle, and the walkthrough before you leave. The items that carry proof are required, and the refusal is built into the system rather than into one screen — a job with a missing before-photo will not close from the field app, the office, or anywhere else. Jobs that were closed before Checkpoints existed read their state from the record they already left: photos on file and a captured signature." },
     { t:"e-Sign — how signing works here", c:"Pick a template, and the system mints an unguessable link. The customer opens it in any browser with no account, consents to sign electronically, adopts a signature by drawing or typing it, and the record freezes with a timestamped audit trail." },
     { t:"Is an electronic signature legally binding?", c:"US law (ESIGN and UETA) generally makes an electronic signature as enforceable as ink when the signer consented to do business electronically, intended to sign, the signature is attributable to them, and the record is retained and reproducible. This module captures all four. It is not legal advice — have your attorney review the consent language for your state." },
+    { t:"Measure", c:"Find an address, then tap the corners of a roof, a yard or a slab on the aerial photo to get the flat square feet, the roof surface at the pitch you pick, and the feet around the edge. Tap along a fence or a trench for linear feet. Save it to the customer and start an estimate from it. The aerial photos are public USDA farm-survey photos, about two feet per pixel and a few years old: good for a quote, confirm on site before ordering." },
+    { t:"Reviews", c:"Paste your review link once (your Google Business profile, Facebook, or any page). Every closed job from the last thirty days waits in Ready to ask. One tap opens a text or an email from your own phone with the message filled in; Toolbelt marks it asked so nobody is asked twice. Toolbelt cannot see whether the review was left." },
+    { t:"Draft an estimate with AI", c:"In Estimates, describe the job in plain words. The AI writes the work steps, picks parts from your own parts list, and guesses the labor hours, then lists what to confirm on site. It never names a price: the suggested price and your cost are worked out from your own parts costs, markup and labor rate. Check it before it goes to a customer. It needs signal." },
     { t:"Time Clock and pay math", c:"Each person clocks in, starts and ends a break, and clocks out from the Time Clock room. That is the whole paid day, shop and drive time included, not only the hours on a job. The timesheet shows paid hours, overtime past the shop's weekly line, and how much of the week was on jobs. The office can fix or add a punch, and the original stays on the record with the reason. The owner and the office also see pay math: regular and overtime hours times each person's rate, as gross pay, with a pay sheet to download. It takes out no taxes, cuts no checks and files nothing." },
     { t:"What this system does NOT do by itself", c:"Four things need an outside party and the system says so rather than pretending: pulling the permit (the city or county issues it), taking payment (a licensed processor moves the money), live supply-house catalogue pricing (the distributor's feed), and filing payroll (a payroll processor). Everything upstream of those is native here." },
     { t:"The Approval Desk", c:"Anything that changes a rate, sends to a customer, writes off a callback, or commits money waits here instead of happening quietly. It should stay nearly empty." },
@@ -2374,6 +2463,9 @@
     truckState:truckState, currentJobFor:currentJobFor, etaFor:etaFor, serviceDue:serviceDue,
     milesSinceService:milesSinceService, sendOnMyWay:sendOnMyWay, jobByOmw:jobByOmw, FLEET_CLOCK:FLEET_CLOCK,
     stampsFor:stampsFor, stampHours:stampHours, stampExceptions:stampExceptions, pingAgeMin:pingAgeMin,
+    reviewLink:reviewLink, setReviewLink:setReviewLink, reviews:reviews, reviewFor:reviewFor, reviewQueue:reviewQueue, reviewMessage:reviewMessage,
+    reviewAsk:reviewAsk, reviewSkip:reviewSkip, PITCH:PITCH, geoLenFt:geoLenFt, geoAreaSqft:geoAreaSqft, measures:measures, measuresFor:measuresFor,
+    addMeasure:addMeasure, deleteMeasure:deleteMeasure, aiDraftEstimate:aiDraftEstimate, priceDraft:priceDraft, techCostPerHr:techCostPerHr,
     TRACK_API:TRACK_API, trackOn:trackOn, trackKey:trackKey, trackStart:trackStart, trackStop:trackStop, trackLink:trackLink,
     trackPull:trackPull, livePhones:livePhones, liveFor:liveFor, trackStatus:trackStatus,
     CLOCK:CLOCK, punches:punches, punchById:punchById, openPunch:openPunch, openBreak:openBreak, clockState:clockState,

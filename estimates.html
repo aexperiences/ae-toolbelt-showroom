@@ -25,7 +25,56 @@
   var content = S.mount({ active:"estimates.html", crumb:"Estimates" });
   content.appendChild(S.page("Estimates","Requested → quoted → won. The margin is on the quote before it goes out, not discovered afterwards.",
     '<button class="btn" id="add">+ New estimate</button>'));
+  var aiHost=document.createElement("div"); content.appendChild(aiHost);
   var host=document.createElement("div"); content.appendChild(host);
+
+  /* AI DRAFT — describe the job, get a scope, parts from this shop's list, and labor hours.
+     Every dollar below is worked out from the shop's own costs, markup and labor rate. */
+  var qm=new URLSearchParams(location.search).get("measure"), fromM=null;
+  if(qm) fromM=S.measures().filter(function(m){ return m.id===qm; })[0]||null;
+  var lastDraft=null;
+  function mText(m){ return m ? (m.kind==="area" ? m.label+": "+Math.round(m.surfaceSqft)+" sq ft"+(m.pitch!=="Flat"?" of roof at "+m.pitch+" pitch":"")+", "+Math.round(m.lengthFt)+" ft around the edge"
+    : m.label+": "+Math.round(m.lengthFt)+" linear ft") : ""; }
+  function renderAi(){
+    var cs=S.db().customers, trades=(S.TRADES||[]).map(function(t){ return t.k||t.name||t; });
+    aiHost.innerHTML="";
+    aiHost.appendChild(S.card('<h2>Draft it with AI</h2>'+
+      '<p class="sub">Say what the job is in plain words. You get the work steps, parts from your own parts list, and labor hours. Prices come from your own costs and rates, never from the AI.</p>'+
+      '<div class="tc-form" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+        '<div class="fld"><label for="aiCust">Customer</label><select id="aiCust">'+cs.map(function(c){ return '<option value="'+S.esc(c.id)+'"'+(fromM&&fromM.customerId===c.id?' selected':'')+'>'+S.esc(c.name)+'</option>'; }).join("")+'</select></div>'+
+        '<div class="fld"><label for="aiTrade">Kind of work</label><select id="aiTrade">'+trades.map(function(t){ return '<option>'+S.esc(t)+'</option>'; }).join("")+'</select></div>'+
+        '<div class="fld" style="grid-column:1/-1"><label for="aiText">The job</label><textarea id="aiText" rows="3" maxlength="1500" placeholder="No heat. 2014 furnace, igniter clicks but no flame. Customer wants a quote to replace the thermostat too.">'+S.esc(fromM?"Measured: "+mText(fromM)+". ":"")+'</textarea></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn tang" id="aiGo">Draft it</button>'+
+        '<a class="btn ghost" href="measure.html">Measure first</a></div>'+
+      '<div id="aiOut"></div>'));
+    var go=aiHost.querySelector("#aiGo");
+    go.onclick=function(){ var t=aiHost.querySelector("#aiText").value.trim(); if(t.length<8) return S.toast("Say a little more about the job.","bad");
+      go.disabled=true; go.textContent="Drafting…";
+      S.aiDraftEstimate(t, aiHost.querySelector("#aiTrade").value, fromM?mText(fromM):"").then(function(r){
+        go.disabled=false; go.textContent="Draft it";
+        if(!r.ok) return S.toast(r.why,"bad");
+        lastDraft={ r:r, text:t, cust:aiHost.querySelector("#aiCust").value, trade:aiHost.querySelector("#aiTrade").value }; showDraft(); }); };
+  }
+  function showDraft(){
+    var r=lastDraft.r, d=r.draft, p=r.priced, office=S.seesMoney(), out=aiHost.querySelector("#aiOut");
+    var m=p.price?((p.price-p.cost)/p.price)*100:0;
+    out.innerHTML='<div class="note" style="margin-top:14px">'+
+      '<b>Work</b><ol style="margin:6px 0 10px 18px;padding:0">'+d.scope.map(function(x){ return '<li>'+S.esc(x)+'</li>'; }).join("")+'</ol>'+
+      '<b>Parts</b>'+(p.lines.length?'<ul style="margin:6px 0 10px 18px;padding:0">'+p.lines.map(function(l){ return '<li>'+l.qty+' × '+S.esc(l.name)+' <span class="muted small">'+S.esc(l.sku)+'</span>'+(office?' <span class="mono small">'+S.money2(l.price)+'</span>':'')+'</li>'; }).join("")+'</ul>':'<p class="muted small">None from your list.</p>')+
+      '<b>Labor</b> <span class="mono">'+p.hours+' hours</span>'+(office?' <span class="mono small">'+S.money2(p.laborPrice)+'</span>':'')+
+      (d.questions.length?'<div style="margin-top:10px"><b>Confirm on site</b><ul style="margin:6px 0 0 18px;padding:0">'+d.questions.map(function(x){ return '<li>'+S.esc(x)+'</li>'; }).join("")+'</ul></div>':'')+
+      (office?'<table class="kv" style="margin-top:12px"><tbody><tr><th>Suggested price</th><td class="mono"><b>'+S.money2(p.price)+'</b></td></tr><tr><th>Your cost</th><td class="mono">'+S.money2(p.cost)+'</td></tr><tr><th>Margin</th><td class="mono">'+S.pct(m,1)+'</td></tr></tbody></table>':'')+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn tang" id="aiSave">Save as an estimate</button><button class="btn ghost" id="aiAgain">Draft again</button></div>'+
+      '<div class="muted small" style="margin-top:8px">A draft from AI. Check it before it goes to the customer.</div></div>';
+    out.querySelector("#aiAgain").onclick=function(){ aiHost.querySelector("#aiGo").click(); };
+    out.querySelector("#aiSave").onclick=function(){
+      var note=lastDraft.text+"\n\nWork: "+d.scope.join("; ")+(p.lines.length?"\nParts: "+p.lines.map(function(l){ return l.qty+" × "+l.name; }).join("; "):"")+"\nLabor: "+p.hours+" hours"+(d.questions.length?"\nConfirm: "+d.questions.join("; "):"");
+      S.addEstimate({ customerId:lastDraft.cust, title:(d.scope[0]||lastDraft.text).slice(0,70), trade:lastDraft.trade, amount:Math.round(p.price), cost:Math.round(p.cost), note:note, draft:{ parts:p.lines, hours:p.hours, ai:true } });
+      S.toast("Saved as an estimate.","ok"); out.innerHTML=""; render(); };
+  }
+  renderAi();
+
   function render(){
     host.innerHTML="";
     var es=S.db().estimates;
