@@ -297,3 +297,57 @@ html.bs-on .bs-lg.bs-lopen:not(.bs-lno) > :not(.bs-view){animation:bs-lin .55s v
 /* the Look button + the twin switch inside the Look sheet (Oct 25 2026) */
 .bs-look svg{display:block}
 .bs-twin{display:block;width:100%;margin:2px 0 16px;padding:12px;border-radius:12px;border:1px solid var(--bs-rule);background:var(--bs-card);color:var(--bs-ink);font:700 14px/1 var(--bs-sans);cursor:pointer}
+
+/* ---- THE NAV SWITCHES (Nov 15 2026, Toolbelt OS first; a profile's nav{} turns each on) ----
+   wide: on a laptop the dock spreads across the page like Kcounty.Media's bar, each seat's main rooms beside Birdseye.
+   phone: more of the seat's own rooms on the phone dock. moreOpen: every room open on More, as big icons by section.
+   roomy: bigger touch targets in the shell. */
+.bs-dock.bs-wide{max-width:min(1120px,calc(100vw - 48px));height:76px;border-radius:26px;padding:0 10px}
+.bs-dock.bs-wide a,.bs-dock.bs-wide button{height:66px;font-size:10.5px;letter-spacing:.05em;gap:5px}
+.bs-dock.bs-wide .bs-dic{width:34px;height:34px;border-radius:9px}
+.bs-dock.bs-wide svg{width:26px;height:26px}
+.bs-dock.bs-wide .bs-glide{top:8px;height:60px}
+.bs-dock.bs-wide .bs-prime{width:68px;height:68px;transform:translateY(-18px)}
+.bs-dock.bs-wide .bs-prime .bs-pl{width:56px;height:56px}
+.bs-dock.bs-wide .bs-prime:active{transform:translateY(-18px) scale(.92)}
+@media (hover:hover){ .bs-dock.bs-wide a:not(.bs-prime):hover{color:var(--bs-gon)} .bs-dock.bs-wide a:not(.bs-prime):hover .bs-dic{transform:translateY(-2px) scale(1.08)} }
+/* a phone dock with more than two rooms: seven slots still clear a thumb (each slot about fifty pixels wide) */
+@media (max-width:899px){
+  html.bs-roomy .bs-dock{height:72px;left:8px;right:8px;padding:0 4px;max-width:560px}
+  html.bs-roomy .bs-dock a,html.bs-roomy .bs-dock button{height:64px;font-size:10.5px;letter-spacing:0;text-transform:none;font-weight:700;gap:4px}
+  html.bs-roomy .bs-dock .bs-prime span{font-size:10px}
+  html.bs-roomy .bs-dock .bs-long{font-size:9.2px;letter-spacing:-.02em}
+  html.bs-roomy .bs-dock .bs-long > span{overflow:visible;text-overflow:clip;max-width:none}
+  html.bs-roomy .bs-dock .bs-dic{width:30px;height:30px}
+  html.bs-roomy .bs-dock .bs-glide{top:7px;height:58px;border-radius:16px}
+  html.bs-roomy .bs-dock .bs-prime{width:58px;height:58px;border-radius:18px}
+  html.bs-roomy .bs-dock .bs-prime .bs-pl{width:47px;height:47px}
+}
+/* More, every room open */
+html.bs-moreopen .bs-sheet{max-width:620px;max-height:min(84vh,820px)}
+@media (min-width:900px){ html.bs-moreopen .bs-sheet{max-width:880px} html.bs-moreopen .bs-rooms{grid-template-columns:repeat(6,minmax(0,1fr))} }
+.bs-wing.bs-flat{background:none;margin:2px 0 6px}
+.bs-wf{font:800 11px/1.2 var(--bs-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--bs-red);margin:10px 10px 4px;padding-bottom:6px;border-bottom:1px solid var(--bs-rule)}
+.bs-wing.bs-flat .bs-rooms{opacity:1;transform:none}
+html.bs-roomy .bs-rooms{gap:6px}
+html.bs-roomy .bs-rooms a{padding:12px 4px;font-size:12px;gap:8px;min-height:96px;overflow-wrap:normal;word-break:normal;-webkit-hyphens:manual;hyphens:manual}
+@media (max-width:420px){ html.bs-roomy .bs-rooms a{font-size:11.5px;letter-spacing:0} }
+html.bs-roomy .bs-rooms .bs-ric{width:56px;height:56px;border-radius:15px}
+html.bs-roomy .bs-mfoot a,html.bs-roomy .bs-mfoot button{padding:13px 16px;font-size:12px}
+/* the header's buttons: a thumb-sized target */
+html.bs-roomy .bs-back,html.bs-roomy .bs-iconbtn{min-width:44px;min-height:44px}
+html.bs-roomy .bs-seat select{min-height:44px}
+html.bs-roomy .bs-ask{height:44px}
+/* the floor plan: a bit more air and larger type */
+html.bs-roomy .bs-cell b{font-size:15px}
+@media (min-width:861px){ html.bs-roomy .bs-cell b{font-size:20px} html.bs-roomy .bs-sm b{font-size:16px} }
+/* roomy phone header: the system's name and the shop's name each hold one line */
+@media (max-width:640px){
+  html.bs-roomy .bs-top .bs-in{gap:6px;padding:8px 8px}
+  html.bs-roomy .bs-sys{white-space:nowrap;font-size:16px}
+  html.bs-roomy .bs-aos img{height:22px}
+  html.bs-roomy .bs-iconbtn,html.bs-roomy .bs-back{min-width:42px;min-height:42px}
+  html.bs-roomy .bs-house{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38vw;display:block}
+  html.bs-roomy .bs-names{min-width:0}
+  html.bs-roomy .bs-top .bs-seat select,html.bs-roomy .bs-top:has(.bs-has-ver) .bs-seat select{width:82px;max-width:82px;font-size:12px;padding:7px 16px 7px 6px}
+}

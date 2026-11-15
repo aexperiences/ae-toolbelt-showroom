@@ -235,6 +235,9 @@
   function build() {
     if (built) return; built = true;
     document.documentElement.classList.add("bs-on");
+    if (C.nav && C.nav.roomy) document.documentElement.classList.add("bs-roomy");
+    if (C.nav && C.nav.moreOpen) document.documentElement.classList.add("bs-moreopen");
+    if (C.nav && C.nav.wide && window.matchMedia) { var mq = window.matchMedia(WIDEQ), rp = function () { paintDock(); }; if (mq.addEventListener) mq.addEventListener("change", rp); else if (mq.addListener) mq.addListener(rp); }
     var b = C.brand;
     var top = document.createElement("div"); top.className = "bs-top"; top.id = "bsTop"; top.setAttribute("role", "banner");
     top.innerHTML = '<div class="bs-in">' +
@@ -285,23 +288,43 @@
   }
 
   /* dock: home · seat room · raised Birdseye (the system's own logo) · seat room · More */
+  /* THE NAV, OPT-IN PER SYSTEM (Anthony, Nov 15 2026, Toolbelt OS: "make the nav spread out like kcounty.media on the
+     computer, everything gets a room on the #MORE, the ones that each individual privilege's main apps on the small phone
+     nav"). A profile's nav{} turns these on; without it a system keeps the five-slot dock and the folding More sheet.
+       nav.phone      rooms on the phone dock beside Home, Birdseye and More (each seat's own main apps: seat.dock first)
+       nav.wide       on a laptop the dock spreads across the page like Kcounty.Media's bar (seat.dockWide first)
+       nav.wideCount  how many rooms the laptop bar carries (default 10)
+       nav.moreOpen   More shows every room the seat can open, every section open, as big icons
+       nav.roomy      bigger touch targets in the shell (dock, More, header buttons) */
+  function navOpt(k) { return C.nav ? C.nav[k] : undefined; }
+  var WIDEQ = "(min-width:900px)";
+  function wideNow() { return !!navOpt("wide") && !!(window.matchMedia && window.matchMedia(WIDEQ).matches); }
+  BS.wideNow = wideNow;
   function dockRooms() {
-    var two = seatRooms(seat().dock, 2);
-    planRooms().big.forEach(function (k) { if (two.length < 2 && two.indexOf(k) < 0) two.push(k); });
-    return two.slice(0, 2);
+    var s = seat(), wide = wideNow(), want = wide ? (navOpt("wideCount") || 10) : (navOpt("phone") || 2);
+    var out = seatRooms(wide ? (s.dockWide || s.dock) : s.dock, want), p = planRooms();
+    p.big.concat(p.small).forEach(function (k) { if (out.length < want && out.indexOf(k) < 0) out.push(k); });
+    if (wide) (C.rooms || []).forEach(function (r) { if (out.length < want && !r.hidden && canOpen(r.k) && out.indexOf(r.k) < 0) out.push(r.k); });
+    return out.slice(0, want);
   }
   function dlink(k) {
     var isHome = k === "__home", r = isHome ? null : room(k);
     var short = isHome ? "Home" : (r.short || label(r).split(/[\s·&]/)[0]);
     var on = (isHome && mode === "home") || (!isHome && active === k);
-    return '<a href="' + attr(hrefOf(k)) + '" data-k="' + attr(k) + '"' + (on ? ' class="on" aria-current="page"' : "") + ">" +
+    var cls = (on ? "on" : "") + (String(short).length > 9 ? (on ? " " : "") + "bs-long" : "");  /* a long name sets a size smaller so the whole word shows */
+    return '<a href="' + attr(hrefOf(k)) + '" data-k="' + attr(k) + '"' + (cls ? ' class="' + cls + '"' : "") + (on ? ' aria-current="page"' : "") + ">" +
       (isHome ? GRID : icon(k, "bs-dic")) + "<span>" + esc(short) + "</span></a>";
   }
   function paintDock() {
-    var two = dockRooms(), d = els.dock;
-    d.innerHTML = '<span class="bs-glide" aria-hidden="true"></span>' + dlink("__home") + (two[0] ? dlink(two[0]) : "<span></span>") +
+    var two = dockRooms(), d = els.dock, half = Math.max(1, Math.ceil(two.length / 2));
+    var left = two.slice(0, half), right = two.slice(half);
+    while (right.length < left.length) right.push(null);
+    function slot(k) { return k ? dlink(k) : "<span></span>"; }
+    d.classList.toggle("bs-wide", wideNow());
+    d.style.gridTemplateColumns = C.nav ? "repeat(" + (left.length + right.length + 3) + ",minmax(0,1fr))" : "";
+    d.innerHTML = '<span class="bs-glide" aria-hidden="true"></span>' + dlink("__home") + left.map(slot).join("") +
       '<a href="' + attr(hrefOf("__glance")) + '" data-k="__glance" id="bsPrime" class="bs-prime' + (mode === "glance" ? " on" : "") + '" aria-label="Birdseye — everything at a glance"><img class="bs-pl" src="' + attr(C.brand.birdseyeIcon || "/icons/rooms/birdseye.png") + '" alt="' + esc(C.brand.short || C.brand.name) + '"><span>Birdseye</span></a>' +
-      (two[1] ? dlink(two[1]) : "<span></span>") + '<button type="button" id="bsMore" data-k="__more" aria-haspopup="dialog" aria-controls="bsSheet">' + MORE + "<span>More</span></button>";
+      right.map(slot).join("") + '<button type="button" id="bsMore" data-k="__more" aria-haspopup="dialog" aria-controls="bsSheet">' + MORE + "<span>More</span></button>";
     d.querySelector("#bsMore").onclick = function () { openSheet(!els.sheet.classList.contains("up")); };
     var inDock = mode === "home" || ["__glance"].concat(two).indexOf(active) >= 0 || mode === "glance";
     var tgt = mode === "home" ? d.querySelector('[data-k="__home"]') : mode === "glance" ? null : d.querySelector('[data-k="' + active + '"]');
@@ -326,6 +349,9 @@
       if (!rs.length) return "";
       total += rs.length;
       var op = openWing === w.k;
+      if (navOpt("moreOpen")) return '<div class="bs-wing open bs-flat" data-w="' + attr(w.k) + '"><h4 class="bs-wf">' + esc(w.name) + '</h4><div class="bs-rooms">' + rs.map(function (r) {
+          return '<a href="' + attr(hrefOf(r.k)) + '"' + (active === r.k ? ' class="cur" aria-current="page"' : "") + ">" + icon(r.k) + "<span>" + esc(label(r)) + "</span></a>";
+        }).join("") + "</div></div>";
       return '<div class="bs-wing' + (op ? " open" : "") + '" data-w="' + attr(w.k) + '"><button type="button" class="bs-wh" aria-expanded="' + op + '">' +
         icon(rs[0].k, "bs-whi") + '<span class="bs-wt">' + esc(w.name) + "</span><b>" + rs.length + '</b><i class="bs-chev" aria-hidden="true"></i></button>' +
         '<div class="bs-wb"><div class="bs-wbi"><div class="bs-rooms">' + rs.map(function (r) {
