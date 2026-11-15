@@ -780,3 +780,11 @@ label:has(> input[type=checkbox]),label:has(> input[type=radio]){display:inline-
 .cn-btn{min-height:48px}
 a.btn,button{touch-action:manipulation}
 @media(max-width:640px){ body{font-size:15.5px} .btn{width:auto} tbody td{padding-top:13px;padding-bottom:13px} }
+/* map controls a thumb can hit (Measure, FleetView) */
+.leaflet-control-zoom a{width:44px!important;height:44px!important;line-height:44px!important;font-size:22px!important}
+.maplibregl-ctrl-group button{width:44px!important;height:44px!important}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon{background-size:26px}
+.fl-fit{top:112px!important;min-height:44px!important}
+@media(max-width:640px){ .fl-fit{width:44px!important;height:44px!important;font-size:18px!important;border-radius:10px!important} }
+.fl-badge{width:40px!important;height:40px!important;font-size:15px!important}
+.fl-top{right:68px!important}

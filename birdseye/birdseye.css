@@ -351,3 +351,6 @@ html.bs-roomy .bs-cell b{font-size:15px}
   html.bs-roomy .bs-names{min-width:0}
   html.bs-roomy .bs-top .bs-seat select,html.bs-roomy .bs-top:has(.bs-has-ver) .bs-seat select{width:82px;max-width:82px;font-size:12px;padding:7px 16px 7px 6px}
 }
+/* roomy: the helper's edge tab is wide enough to hit */
+html.bs-roomy .bs-tab{width:36px;height:96px}
+html.bs-roomy .bs-tab:hover{width:42px}
