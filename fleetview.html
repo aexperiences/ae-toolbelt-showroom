@@ -15,14 +15,41 @@
 <link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
 <meta name="theme-color" content="#e4832b">
 <link rel="stylesheet" href="toolbelt.css">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-<script src="vendor/leaflet/leaflet.js"></script>
+<link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css">
+<script src="vendor/maplibre/maplibre-gl.js"></script>
 <style>
   .fmapwrap{position:relative;background:var(--sunk);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;}
   .fmap{display:block;width:100%;height:auto;}
-  .flive{height:460px;width:100%}
-  .flive .leaflet-tooltip{font-weight:700;padding:2px 6px;font-size:12px}
-  @media(max-width:640px){.flive{height:380px}}
+  /* THE STREET MAP (Nov 15 2026, "make the street map part really slick looking") */
+  .fl-wrap{position:relative;border-radius:18px;overflow:hidden;box-shadow:0 18px 40px -24px rgba(35,43,51,.55),0 2px 6px rgba(35,43,51,.08);border:1px solid var(--line);background:#eef1f3}
+  .flive{height:540px;width:100%}
+  .fl-top{position:absolute;left:12px;right:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none;z-index:2}
+  .fl-chip{pointer-events:auto;display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.92);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 14px -6px rgba(35,43,51,.35);font:700 12.5px/1 var(--sans,system-ui,sans-serif);color:#232b33}
+  .fl-chip i{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .fl-chip b{font-variant-numeric:tabular-nums}
+  .fl-fit{position:absolute;right:10px;top:84px;z-index:2;border:0;border-radius:12px;padding:10px 13px;background:rgba(255,255,255,.95);
+    box-shadow:0 6px 18px -8px rgba(35,43,51,.45);font:700 13px/1 var(--sans,system-ui,sans-serif);color:#232b33;cursor:pointer;min-height:40px}
+  .fl-truck{display:flex;align-items:center;gap:0;cursor:pointer;transform:translateY(-2px);filter:drop-shadow(0 6px 10px rgba(35,43,51,.28))}
+  .fl-badge{position:relative;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;font:800 14px/1 var(--sans,system-ui,sans-serif);
+    border:3px solid #fff;z-index:1}
+  .fl-name{margin-left:-10px;padding:5px 10px 5px 15px;background:#fff;border-radius:0 999px 999px 0;font:700 12.5px/1.1 var(--sans,system-ui,sans-serif);color:#232b33;white-space:nowrap}
+  .fl-name small{display:block;font-weight:600;font-size:10.5px;color:#6b7783;margin-top:2px}
+  .fl-badge.pulse::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:3px solid currentColor;opacity:.0;animation:flpulse 2.2s ease-out infinite}
+  .fl-badge.live::before{content:"";position:absolute;inset:-7px;border-radius:50%;border:3px solid #2f8f6b}
+  @keyframes flpulse{0%{transform:scale(.7);opacity:.55}100%{transform:scale(1.5);opacity:0}}
+  .fl-shop{display:flex;align-items:center;gap:7px;padding:7px 11px 7px 8px;background:#232b33;color:#fff;border-radius:12px;font:800 12.5px/1 var(--sans,system-ui,sans-serif);
+    box-shadow:0 8px 18px -8px rgba(35,43,51,.6);border:2px solid #fff}
+  .fl-shop span{display:grid;place-items:center;width:22px;height:22px;border-radius:7px;background:#e4832b;font-size:13px}
+  @media(max-width:640px){.fl-shop{padding:5px;font-size:0;gap:0}.fl-shop span{font-size:13px}}
+  .fl-site{width:16px;height:16px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#fff;border:3px solid #8391a0;box-shadow:0 3px 8px -2px rgba(35,43,51,.4)}
+  .maplibregl-popup-content{border-radius:14px;padding:14px 16px;box-shadow:0 18px 40px -16px rgba(35,43,51,.5);font:14px/1.4 var(--sans,system-ui,sans-serif);color:#232b33;min-width:210px}
+  .fl-pop h4{margin:0 0 2px;font-size:16px}.fl-pop .muted{color:#6b7783;font-size:12.5px}.fl-pop .st{display:inline-block;margin:8px 0 6px;padding:3px 9px;border-radius:999px;color:#fff;font-weight:700;font-size:12px}
+  .fl-pop a{display:inline-block;margin-top:8px;font-weight:700;color:#c8641a}
+  .maplibregl-ctrl-group{border-radius:12px!important;box-shadow:0 6px 18px -8px rgba(35,43,51,.45)!important}
+  .fl-fit-i{display:none;font-size:18px}
+  @media(max-width:640px){.fl-fit{padding:0;width:29px;min-height:29px;height:29px;right:10px;border-radius:8px}.fl-fit-t{display:none}.fl-fit-i{display:inline}.flive{height:440px}.fl-name small{display:none}.fl-chip{padding:6px 9px;font-size:12px}}
+  @media(prefers-reduced-motion:reduce){.fl-badge.pulse::after{animation:none}}
   .flegend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--ink-2);}
   .flegend span{display:inline-flex;align-items:center;gap:6px;}
   .fdot{width:11px;height:11px;border-radius:50%;display:inline-block;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);}
@@ -147,31 +174,81 @@
       '</div>';
   }
 
-  /* STREET MAP — the same trucks, job sites and shop on real streets (OpenStreetMap). The map is built once and
-     moved back into the card on every refresh, so it keeps its zoom. With no signal the plot above stays. */
-  var lmEl=null, lmap=null, lmLayer=null, lmFit=false;
-  function mountLive(states){
-    var slot=document.getElementById("fleetLiveSlot"), svg=document.getElementById("fleetSvg");
-    if(!slot || !window.L) return;
-    if(!lmEl){ lmEl=document.createElement("div"); lmEl.className="flive"; lmEl.setAttribute("aria-label","Street map of truck positions");
-      slot.appendChild(lmEl);
-      var sh=S.db().shop||{};
-      lmap=L.map(lmEl,{ scrollWheelZoom:false, keyboard:false }).setView([sh.lat||47.718, sh.lng||-116.95], 11);
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{ maxZoom:19, attribution:"© OpenStreetMap contributors" })
-        .on("tileerror",function(){ if(svg) svg.style.display=""; }).addTo(lmap);
-      lmLayer=L.layerGroup().addTo(lmap);
-    } else slot.appendChild(lmEl);
-    if(svg) svg.style.display="none";
-    lmLayer.clearLayers(); var pts=[], sh=S.db().shop||{};
-    if(sh.lat!==undefined){ L.circleMarker([sh.lat,sh.lng],{ radius:9, color:"#232b33", fillColor:"#232b33", fillOpacity:1, weight:2 }).bindTooltip("The shop").addTo(lmLayer); pts.push([sh.lat,sh.lng]); }
+  /* STREET MAP (Nov 15 2026) — the same trucks, job sites and shop on a clean vector street map (OpenFreeMap, free,
+     OpenStreetMap data). Built once and moved back into the card on every refresh, so the zoom stays where you put it.
+     With no signal, or no WebGL, the plot stays instead. */
+  var lmWrap=null, lmap=null, lmMarks=[], lmFit=false, lmBad=false, lmReady=false, lmStates=[];
+  function shortTruck(v){ return String(v.label).replace(/[^0-9]/g,"")||"•"; }
+  function el(html){ var d=document.createElement("div"); d.innerHTML=html; return d.firstChild; }
+  function popHtml(f){ var t=f.tech, c=f.job?S.customerById(f.job.customerId):null;
+    return '<div class="fl-pop"><h4>'+S.esc(f.truck.label)+'</h4><div class="muted">'+S.esc(t?t.name:"Unassigned")+(t?' · '+S.esc(t.trade):'')+'</div>'+
+      '<span class="st" style="background:'+colorFor(f.status)+'">'+S.esc(f.status)+'</span>'+
+      (f.job?'<div><b>'+S.esc(f.job.task)+'</b><br>'+S.esc(c?c.name:"")+(f.eta?' · '+f.eta.minutes+' min out':'')+'</div>':'<div class="muted">Nothing on today’s board.</div>')+
+      '<div class="muted" style="margin-top:6px">'+(f.truck.live?'<b style="color:#2f8f6b">Live from the phone</b> · ':'Sample position · ')+(f.ageMin===null?'—':(f.ageMin<1?'just now':f.ageMin+' min ago'))+'</div>'+
+      (f.job?'<a href="dispatch.html">Open on the board →</a>':'')+'</div>'; }
+  function routes(states){ var feats=[];
+    states.forEach(function(f){ if(!f.truck.ping||!f.job||f.status!=="En route") return; var c=S.customerById(f.job.customerId); if(!c||c.lat===undefined) return;
+      feats.push({ type:"Feature", properties:{ color:colorFor(f.status) }, geometry:{ type:"LineString", coordinates:[[f.truck.ping.lng,f.truck.ping.lat],[c.lng,c.lat]] } }); });
+    return { type:"FeatureCollection", features:feats }; }
+  function paintMarks(states){
+    lmMarks.forEach(function(m){ m.remove(); }); lmMarks=[]; var b=new maplibregl.LngLatBounds(), sh=S.db().shop||{}, n=0;
+    function add(node,ll,anchor,pop){ var m=new maplibregl.Marker({ element:node, anchor:anchor||"center" }).setLngLat(ll); if(pop) m.setPopup(new maplibregl.Popup({ offset:22, closeButton:false, maxWidth:"280px" }).setHTML(pop)); m.addTo(lmap); lmMarks.push(m); b.extend(ll); n++; }
     states.forEach(function(f){ if(!f.job) return; var c=S.customerById(f.job.customerId); if(!c||c.lat===undefined) return;
-      L.circleMarker([c.lat,c.lng],{ radius:6, color:"#8391a0", fillColor:"#fff", fillOpacity:1, weight:2 }).bindTooltip(S.esc(c.name)).addTo(lmLayer); pts.push([c.lat,c.lng]); });
-    states.forEach(function(f){ if(!f.truck.ping) return; var ll=[f.truck.ping.lat,f.truck.ping.lng];
-      if(f.truck.live) L.circleMarker(ll,{ radius:15, color:"#2f8f6b", weight:3, fill:false }).addTo(lmLayer);
-      L.circleMarker(ll,{ radius:9, color:"#fff", weight:3, fillColor:colorFor(f.status), fillOpacity:1 })
-        .bindTooltip(S.esc(String(f.truck.label).replace(/[^0-9]/g,""))+" "+S.esc((f.tech&&f.tech.name||"").split(" ")[0]),{ permanent:true, direction:"right", offset:[8,0] })
-        .addTo(lmLayer); pts.push(ll); });
-    setTimeout(function(){ lmap.invalidateSize(); if(!lmFit && pts.length>1){ lmap.fitBounds(pts,{ padding:[30,30] }); lmFit=true; } },0);
+      add(el('<div class="fl-site" title="'+S.esc(c.name)+'"></div>'),[c.lng,c.lat],"bottom-left",'<div class="fl-pop"><h4>'+S.esc(c.name)+'</h4><div class="muted">'+S.esc(f.job.task)+'</div></div>'); });
+    if(sh.lat!==undefined) add(el('<div class="fl-shop"><span>⌂</span>The shop</div>'),[sh.lng,sh.lat],"right");
+    states.forEach(function(f){ if(!f.truck.ping) return; var col=colorFor(f.status), first=(f.tech&&f.tech.name||"").split(" ")[0];
+      var node=el('<div class="fl-truck" role="button" tabindex="0" aria-label="'+S.esc(f.truck.label+", "+first+", "+f.status)+'">'+
+        '<div class="fl-badge'+(f.status==="En route"?" pulse":"")+(f.truck.live?" live":"")+'" style="background:'+col+';color:'+col+'"><span style="color:#fff">'+S.esc(shortTruck(f.truck))+'</span></div>'+
+        '<div class="fl-name">'+S.esc(first||"Truck")+'<small>'+S.esc(f.status)+'</small></div></div>');
+      add(node,[f.truck.ping.lng,f.truck.ping.lat],"left",popHtml(f)); });
+    var src=lmap.getSource("routes"); if(src) src.setData(routes(states));
+    declutter();
+    return { b:b, n:n };
+  }
+  /* trucks parked close together stack neatly instead of piling on top of each other */
+  function declutter(){ if(!lmap) return; var placed=[];
+    lmMarks.forEach(function(m){ var e=m.getElement(); if(!e.classList.contains("fl-truck")) return;
+      var p=lmap.project(m.getLngLat()), w=e.offsetWidth||120, dy=0, guard=0;
+      function hits(y){ return placed.some(function(q){ return p.x<q.x+q.w+6 && q.x<p.x+w+6 && Math.abs(q.y-y)<38; }); }
+      while(guard++<10 && hits(p.y+dy)) dy = dy>0 ? -dy : -dy+40;
+      placed.push({ x:p.x, y:p.y+dy, w:w }); m.setOffset([0,dy]); }); }
+  function tint(){ /* the house look on a free map: soft blue water, quiet green parks */
+    try{ (lmap.getStyle().layers||[]).forEach(function(l){
+      if(l.type==="fill" && /water/.test(l.id)) lmap.setPaintProperty(l.id,"fill-color","#cfe2ee");
+      else if(l.type==="fill" && /park|wood|forest|grass|landcover/.test(l.id)) lmap.setPaintProperty(l.id,"fill-color","#e4eedf");
+      else if(l.type==="line" && /waterway/.test(l.id)) lmap.setPaintProperty(l.id,"line-color","#b9d3e3"); }); }catch(e){} }
+  function narrow(){ return lmWrap && lmWrap.clientWidth<520; }
+  function fitAll(anim){ var r=paintMarks(lmStates), sm=narrow();
+    if(r.n>1) lmap.fitBounds(r.b,{ padding:{ top:76, bottom:sm?44:50, left:sm?44:130, right:sm?118:170 }, maxZoom:14, duration:anim?900:0 }); }
+  function chips(states){ var on=0, er=0, live=0, idle=0; states.forEach(function(f){ if(f.status==="On site") on++; else if(f.status==="En route") er++; if(f.truck.live) live++; });
+    return '<span class="fl-chip"><b>'+states.filter(function(f){ return f.truck.ping; }).length+'</b> trucks</span>'+
+      '<span class="fl-chip"><i style="background:#2f8f6b"></i><b>'+on+'</b> on site</span>'+
+      '<span class="fl-chip"><i style="background:#e4832b"></i><b>'+er+'</b> en route</span>'+
+      (live?'<span class="fl-chip"><i style="background:transparent;border:2.5px solid #2f8f6b"></i><b>'+live+'</b> live</span>':''); }
+  function mountLive(states){
+    var slot=document.getElementById("fleetLiveSlot"), svg=document.getElementById("fleetSvg"); lmStates=states;
+    if(!slot || lmBad || !window.maplibregl) return;
+    if(!lmWrap){
+      lmWrap=el('<div class="fl-wrap"><div class="flive" aria-label="Street map of the trucks"></div><div class="fl-top"></div><button class="fl-fit" type="button" aria-label="Fit all trucks"><span class="fl-fit-t">Fit all trucks</span><span class="fl-fit-i" aria-hidden="true">⤢</span></button></div>');
+      slot.appendChild(lmWrap);
+      var sh=S.db().shop||{};
+      try{
+        lmap=new maplibregl.Map({ container:lmWrap.querySelector(".flive"), style:"https://tiles.openfreemap.org/styles/positron",
+          center:[sh.lng||-116.95, sh.lat||47.718], zoom:10.5, attributionControl:{ compact:true }, cooperativeGestures:true, dragRotate:false, pitchWithRotate:false });
+      }catch(e){ lmBad=true; lmWrap.remove(); lmWrap=null; return; }
+      lmap.addControl(new maplibregl.NavigationControl({ showCompass:false }),"top-right");
+      lmap.on("error",function(e){ if(!lmReady){ lmBad=true; if(lmWrap){ lmWrap.remove(); lmWrap=null; } if(svg) svg.style.display=""; } });
+      lmap.on("moveend",declutter);
+      lmap.on("load",function(){ lmReady=true; tint();
+        var at=lmWrap.querySelector(".maplibregl-ctrl-attrib"); if(at) at.classList.remove("maplibregl-compact-show");
+        lmap.addSource("routes",{ type:"geojson", data:routes(lmStates) });
+        lmap.addLayer({ id:"routes-glow", type:"line", source:"routes", paint:{ "line-color":["get","color"], "line-width":9, "line-opacity":.16, "line-blur":2 } });
+        lmap.addLayer({ id:"routes", type:"line", source:"routes", layout:{ "line-cap":"round" }, paint:{ "line-color":["get","color"], "line-width":3, "line-dasharray":[1.2,1.6] } });
+        if(svg) svg.style.display="none"; fitAll(false); lmFit=true; });
+      lmWrap.querySelector(".fl-fit").onclick=function(){ fitAll(true); };
+    } else slot.appendChild(lmWrap);
+    lmWrap.querySelector(".fl-top").innerHTML=chips(states);
+    if(lmReady){ if(svg) svg.style.display="none"; paintMarks(states); setTimeout(function(){ lmap.resize(); },0); }
   }
 
   function ago(ts){ var m=Math.max(0,Math.round((Date.now()-ts)/60000)); return m<1?"just now":m+" min ago"; }
@@ -219,7 +296,7 @@
     host.appendChild(S.card('<h2>The board, on a map</h2>'+
       '<p class="sub">'+(nLive ? nLive+' truck'+(nLive>1?'s are':' is')+' live from the phone right now (green ring). The rest show the sample position from '+S.esc(S.FLEET_CLOCK)+'.'
         : 'Sample positions from '+S.esc(S.FLEET_CLOCK)+'. Turn on live tracking above to see real phones here.')+
-      ' Street map © OpenStreetMap contributors.</p>'+
+      ' Street map: OpenFreeMap, © OpenStreetMap contributors.</p>'+
       buildMap(states)));
 
     host.appendChild(S.card('<h2>Every truck</h2>'+
