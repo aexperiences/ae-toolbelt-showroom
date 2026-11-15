@@ -1414,7 +1414,15 @@
     el.querySelectorAll(".br-chip").forEach(function(b){ b.onclick=function(){ ask(b.textContent); }; });
     function line(who,html){ var d=document.createElement("div"); d.className="br-line "+who; d.innerHTML=html; log.appendChild(d); log.scrollTop=log.scrollHeight; return d; }
     function say(t){ if(!speak||!global.speechSynthesis) return; try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.rate=1.03; u.lang="en-US";
-      var v=(speechSynthesis.getVoices()||[]).filter(function(v){ return /en-US/.test(v.lang) && /Daniel|Alex|Aaron|Male|Guy|Davis|Google US English/i.test(v.name); })[0]; if(v) u.voice=v; speechSynthesis.speak(u); }catch(e){} }
+      var v=brianVoice(); if(v) u.voice=v; speechSynthesis.speak(u); }catch(e){} }
+    /* the phone's most natural US man's voice (Nov 15 2026, until Brian's own voice is on the free voice computer):
+       the phone's premium and enhanced voices first, then the cloud voices Chrome and Edge carry, then any US voice */
+    function brianVoice(){ var vs=(speechSynthesis.getVoices()||[]).filter(function(v){ return /^en[-_]US/i.test(v.lang); }); if(!vs.length) return null;
+      var men=/Evan|Nathan|Aaron|Tom|Alex|Fred|Guy|Davis|Andrew|Brian|Christopher|Eric|Roger|Steffan|Male|Google US English/i;
+      function score(v){ var n=v.name, s=0; if(/Premium/i.test(n)) s+=40; if(/Enhanced/i.test(n)) s+=30; if(/Natural|Online|Neural/i.test(n)) s+=25;
+        if(men.test(n)) s+=20; if(/Google US English/i.test(n)) s+=8; if(v.localService===false) s+=4; if(/Novelty|Bad News|Bells|Bubbles|Cellos|Organ|Whisper|Zarvox|Trinoids|Jester|Superstar|Boing|Wobble|Albert|Ralph|Junior|Grandpa|Rocko|Eddy|Reed|Sandy|Shelley/i.test(n)) s-=100; return s; }
+      return vs.slice().sort(function(a,b){ return score(b)-score(a); })[0]; }
+    if(global.speechSynthesis && speechSynthesis.onvoiceschanged!==undefined) speechSynthesis.onvoiceschanged=function(){};
     function hello(){ var t=(db().jobs||[]).filter(function(j){ return j.date===iso(TODAY); }).length, h=new Date().getHours();
       var hi=h<12?"Morning.":h<17?"Afternoon.":"Evening.", board=t?(t+" job"+(t===1?"":"s")+" on today\'s board."):"Nothing on today\'s board yet.";
       line("brian",'<b>Brian</b><p>'+hi+' '+board+' Tell me what you need: clock someone in, put a tech on a job, draft an estimate, ask for reviews. I line it up, you tap <strong>Do it</strong>.</p>'); }
