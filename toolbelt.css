@@ -807,3 +807,9 @@ a.btn,button{touch-action:manipulation}
    skin the white box made the room title unreadable. */
 html[data-bs-theme="dark"] .pagehead{background:linear-gradient(100deg,color-mix(in srgb,var(--room) 22%,var(--card,#0d1116)) 0%,var(--card,#0d1116) 70%)}
 html[data-bs-theme="dark"] .tb-trade{color:inherit}
+/* Brian's conversation on a dark skin (Nov 16 2026): the bubbles kept a white ground while the text took the skin's
+   near-white ink, so his words were almost invisible on Complete Restoration's black skin. */
+html[data-bs-theme="dark"] .br-line{background:#151b22!important;color:#f2f6fa!important;border-color:#2a3440!important}
+html[data-bs-theme="dark"] .br-line p,html[data-bs-theme="dark"] .br-line li{color:#f2f6fa!important}
+html[data-bs-theme="dark"] .br-chip{background:#151b22!important;color:#f2f6fa!important;border-color:#2a3440!important}
+html[data-bs-theme="dark"] .br-card{color:#f2f6fa}
