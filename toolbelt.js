@@ -76,7 +76,10 @@
   }
   function emptyBook(){ var d=fresh(); d.sample=false;
     d.techs=[]; d.customers=[]; d.jobs=[]; d.applicants=[]; d.referrers=[]; d.calls=[]; d.trucks=[]; d.memberships=[];
-    d.estimates=[]; d.documents=[]; d.approvals=[]; d.bus=[]; return d; }
+    d.estimates=[]; d.documents=[]; d.approvals=[]; d.bus=[];
+    d.drylogs=[]; d.claims=[]; d.equipment=[]; d.mold=[]; d.radon=[]; d.packout=[];
+    d.table={ name:"", meets:"", where:"", members:[], referrals:[], rotations:[] }; d.oncall={ callbackMin:15, onsiteHrs:2, rota:[], calls:[] };
+    return d; }
   function goLive(){ var d=emptyBook(); write(d); return d; }
   function isSample(){ return db().sample !== false; }
   function db(){ var d=read(); if(!d){ d=fresh(); write(d); return d; }
