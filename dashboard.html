@@ -61,7 +61,7 @@
   
   /* today's board */
   var today=S.iso(S.TODAY);
-  var rows=S.db().jobs.filter(function(j){return j.date===today;}).sort(function(a,b){return a.start<b.start?-1:1;});
+  var rows=S.modeJobs().filter(function(j){return j.date===today;}).sort(function(a,b){return a.start<b.start?-1:1;});
   content.appendChild(S.card('<h2>Today on the board</h2><p class="sub">'+S.dayLabel(today)+
     ' — every job today and where it stands.</p><div class="tablewrap"><table><thead><tr><th>Time</th><th>Customer</th>'+
     '<th>Tech</th><th>Trade</th><th>How it pays</th><th>Proof</th><th class="right">Margin</th></tr></thead><tbody>'+

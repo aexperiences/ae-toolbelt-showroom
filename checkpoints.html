@@ -99,14 +99,14 @@
       S.stat("Not started", st.notStarted, "No one has arrived — nothing to document yet","")+
       '</div>'));
 
-    var live=S.db().jobs.filter(S.checkStarted).map(S.checkState);
+    var live=S.modeJobs().filter(S.checkStarted).map(S.checkState);
     host.appendChild(S.card('<h2>Jobs under way</h2>'+
       '<p class="sub">Tick an item as the tech would from the truck. A required photo item needs the photo, not just the tick — ' +
       'that is the difference between a checklist and a gate.</p>'+
       (live.length ? live.map(renderJob).join("")
                    : '<p class="muted">Nobody is on a job right now. Arrive at a job on the Field floor and its checklist opens here.</p>')));
 
-    var closed=S.db().jobs.filter(function(j){ return j.status==="Closed"; }).slice(-6).reverse().map(S.checkState);
+    var closed=S.modeJobs().filter(function(j){ return j.status==="Closed"; }).slice(-6).reverse().map(S.checkState);
     host.appendChild(S.card('<h2>Recently closed — what the record already proves</h2>'+
       '<p class="sub">Jobs closed before Checkpoints existed are not marked as failures. Their state is read from the record they ' +
       'already left behind: photos on file and a captured signature. Nothing here was invented to make the number look better.</p>'+

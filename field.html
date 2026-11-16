@@ -31,9 +31,9 @@
   function render(){
     host.innerHTML="";
     var comp=S.proofCompliancePct(), ex=S.proofExceptions();
-    var live=S.db().jobs.filter(function(j){return j.status==="On site";});
+    var live=S.modeJobs().filter(function(j){return j.status==="On site";});
     var today=S.iso(S.TODAY);
-    var due=S.db().jobs.filter(function(j){return j.date===today&&j.status==="Scheduled"&&j.techId;});
+    var due=S.modeJobs().filter(function(j){return j.date===today&&j.status==="Scheduled"&&j.techId;});
   
     host.appendChild(S.card('<h2>Proof, last '+S.PROOF_WINDOW_DAYS+' days</h2>'+
       '<p class="sub">A rolling window, not a calendar week — a percentage off one day is noise.</p><div class="stats">'+

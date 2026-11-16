@@ -83,6 +83,8 @@
     if(!d.calls){ d.calls = d.sample===false ? [] : clone(SEED.calls); write(d); }
     if(!d.trucks){ d.trucks = d.sample===false ? [] : clone(SEED.trucks); write(d); }
     if(!d.memberships){ d.memberships = d.sample===false ? [] : clone(SEED.memberships); write(d); }
+    if(d.sample!==false && !d.techs.some(function(t){return t.id==="t9";})){ SEED.techs.filter(function(t){return t.trade==="Restoration";}).forEach(function(t){ d.techs.push(clone(t)); });
+      SEED.jobs.filter(function(j){return j.trade==="Restoration";}).forEach(function(j){ var c=clone(j); c.id="r"+c.id; d.jobs.push(c); }); write(d); }
     if(!d.drylogs){ d.drylogs = d.sample===false ? [] : clone(SEED.drylogs); write(d); }
     if(!d.table){ d.table = d.sample===false ? { name:"", meets:"", where:"", members:[], referrals:[], rotations:[] } : clone(SEED.table); write(d); }
     return d; }
@@ -175,7 +177,8 @@
     { k:"Maintenance agreement", warranty:false, note:"Prepaid seasonal visits. Revenue is recognised against the agreement, not the visit." },
     { k:"Manufacturer warranty", warranty:true,  note:"The manufacturer reimburses parts and a fixed labor allowance — usually less than your rate." },
     { k:"Our workmanship warranty", warranty:true, note:"We come back for free because something we did failed. Full cost, zero revenue." },
-    { k:"New construction / GC", warranty:false, note:"Contract draw against a schedule of values. Slow pay, thin margin, big volume." }
+    { k:"New construction / GC", warranty:false, note:"Contract draw against a schedule of values. Slow pay, thin margin, big volume." },
+    { k:"Insurance claim", warranty:false, note:"Restoration. Billed to the insurance carrier on an itemized estimate; the drying log and photos are the proof that gets it paid." }
   ];
   function billing(k){ return BILLING.filter(function(b){return b.k===k;})[0] || BILLING[0]; }
   function isWarrantyWork(k){ return !!billing(k).warranty; }
@@ -207,7 +210,8 @@
     "Drain cable / auger","Hydro-jet line","Camera inspection","Faucet / fixture replacement",
     "Toilet rebuild","Garbage disposal replacement","Shut-off valve replacement",
     "Outlet / switch replacement","Light fixture replacement","GFCI replacement","Breaker replacement",
-    "Appliance diagnosis","Seasonal maintenance checklist","Safety inspection","Customer walkthrough"
+    "Appliance diagnosis","Seasonal maintenance checklist","Safety inspection","Customer walkthrough",
+    "Water extraction and set drying equipment","Daily drying readings","Tear-out of wet drywall","Mold removal over 10 square feet","Contents pack-out","Pull drying equipment"
   ];
 
   /* LICENCES. A lapsed required licence removes the tech from dispatch. */
@@ -410,7 +414,17 @@
     { id:"t8", name:"Toby Lindquist", trade:"HVAC", phone:"(208) 555-0188", city:"Hayden",
       lat:47.7490, lng:-116.7720, hired:SHIFT("2026-06-01"), payRate:24.00, status:"Apprentice", rating:null,
       truck:"rides along", skills:["Attic comfortable"],
-      lic:{ "Driver's licence":licOn(29), "Insurance / MVR":licOn(5), "OSHA 10":licOn(17) } }
+      lic:{ "Driver's licence":licOn(29), "Insurance / MVR":licOn(5), "OSHA 10":licOn(17) } },
+    /* The restoration crew (Trade Switch, Nov 15 2026) */
+    { id:"t9", name:"Rosa Delgado", trade:"Restoration", phone:"(208) 555-0189", city:"Coeur d'Alene",
+      lat:47.6810, lng:-116.7900, hired:SHIFT("2022-04-04"), payRate:31.00, status:"Active", rating:4.8,
+      truck:"Truck 9", skills:["Water extraction","Structural drying","Mold remediation","Crawlspace comfortable"],
+      lic:{ "Driver's licence":licOn(21), "Insurance / MVR":licOn(10), "OSHA 10":licOn(16),
+            "IICRC WRT (water)":licOn(19), "IICRC AMRT (mold)":licOn(3), "EPA RRP (lead-safe)":licOn(12) } },
+    { id:"t10", name:"Caleb Ostrander", trade:"Restoration", phone:"(208) 555-0190", city:"Post Falls",
+      lat:47.7200, lng:-116.9500, hired:SHIFT("2025-01-13"), payRate:25.00, status:"Active", rating:4.5,
+      truck:"Truck 10", skills:["Water extraction","Tear-out","Contents pack-out"],
+      lic:{ "Driver's licence":licOn(27), "Insurance / MVR":licOn(7), "OSHA 10":licOn(13), "IICRC WRT (water)":licOn(22) } }
   ];
 
   SEED.customers = [
@@ -499,7 +513,13 @@
     [5,"c3","Plumbing","Repair","Time & materials","08:00",2.0,"t2","Faucet / fixture replacement",{},""],
     [5,"c2","Plumbing","Service call","Time & materials","11:00",3.0,null,"Toilet rebuild",{"WAX-RING":2},"UNASSIGNED — 2 units."],
     [5,"c1","HVAC","Repair","Time & materials","14:00",2.0,"t4","Blower motor replacement",{"BLW-1/2":1},""],
-    [6,"c8","Refrigeration","Emergency","Time & materials","07:00",3.0,"t1","Diagnose and report",{},"Saturday. Ice machine down."]
+    [6,"c8","Refrigeration","Emergency","Time & materials","07:00",3.0,"t1","Diagnose and report",{},"Saturday. Ice machine down."],
+    /* restoration (Trade Switch, Nov 15 2026) */
+    [1,"c3","Restoration","Emergency","Insurance claim","07:30",4.0,"t9","Water extraction and set drying equipment",{},"Burst supply line. Work authorization signed on site."],
+    [2,"c3","Restoration","Service call","Insurance claim","08:00",1.0,"t10","Daily drying readings",{},"Moisture, humidity, temperature. Photos."],
+    [3,"c6","Restoration","Install / replace","Insurance claim","09:00",6.0,"t9","Mold removal over 10 square feet",{},"Crawlspace. Containment up."],
+    [4,"c3","Restoration","Service call","Insurance claim","08:00",1.0,"t10","Daily drying readings",{},""],
+    [5,"c9","Restoration","Emergency","Insurance claim","10:00",5.0,null,"Water extraction and set drying equipment",{},"UNASSIGNED — basement flooded, sump pump failed."]
   ];
 
   SEED.jobs = (function(){
@@ -729,7 +749,14 @@
   function weekOf(dISO){ var d=new Date(dISO+"T12:00:00"); return iso(addDays(d,-d.getDay())); }
   function thisWeek(){ return iso(WEEK_START); }
   function lastWeek(){ return iso(addDays(WEEK_START,-7)); }
-  function jobsInWeek(wk){ return db().jobs.filter(function(j){ return weekOf(j.date)===(wk||thisWeek()); }); }
+  function jobsInWeek(wk){ return db().jobs.filter(function(j){ return weekOf(j.date)===(wk||thisWeek()) && inMode(j.trade); }); }
+  /* The Trade Switch view: only the records of the trade that is switched on (all of them on "All trades"). */
+  function modeJobs(){ return db().jobs.filter(function(j){ return inMode(j.trade); }); }
+  function modeTechs(){ return db().techs.filter(function(t){ return inMode(t.trade); }); }
+  function modeEstimates(){ return (db().estimates||[]).filter(function(e){ return inMode(e.trade); }); }
+  function modePermits(){ var m=tradeMod(); return m.trades ? PERMIT_WORK.filter(function(w){ return m.permits.indexOf(w.k)>=0; }) : PERMIT_WORK; }
+  function modeLicences(){ var m=tradeMod(); return m.trades ? LICENCES.filter(function(l){ return l.required || m.licences.indexOf(l.k)>=0; }) : LICENCES; }
+  function modeTrades(){ var m=tradeMod(); return m.trades ? m.trades.slice() : TRADES.map(function(t){return t.k;}); }
   function isWeekend(dISO){ var w=new Date(dISO+"T12:00:00").getDay(); return w===0||w===6; }
   function isHoliday(dISO){ return (db().shop.holidays||[]).indexOf(dISO)>=0; }
   function afterHours(j){
@@ -870,16 +897,16 @@
   }
   function licIssues(){
     var out=[];
-    db().techs.forEach(function(t){ LICENCES.forEach(function(l){
+    modeTechs().forEach(function(t){ LICENCES.forEach(function(l){
       var st=licStatus(t,l.k);
       if(st.state==="expired"||st.state==="expiring"||(st.state==="missing"&&l.required))
         out.push({tech:t, lic:l, status:st}); }); });
     var rank={expired:0,missing:1,expiring:2};
     return out.sort(function(a,b){ return (rank[a.status.state]-rank[b.status.state]) || ((a.status.days||0)-(b.status.days||0)); });
   }
-  function cannotDispatch(){ return db().techs.filter(function(t){ return licBlockers(t).length>0; }); }
+  function cannotDispatch(){ return modeTechs().filter(function(t){ return licBlockers(t).length>0; }); }
   function permitGaps(){
-    return db().jobs.filter(function(j){ return needsPermit(j.task) && j.status==="Closed" && !j.permitNo; })
+    return modeJobs().filter(function(j){ return needsPermit(j.task) && j.status==="Closed" && !j.permitNo; })
       .map(function(j){ return { job:j, rule:permitRule(j.task), customer:customerById(j.customerId), tech:techById(j.techId) }; });
   }
   function dispatchedUnlicensed(wk){
@@ -993,7 +1020,7 @@
   var PROOF_WINDOW_DAYS = 14;
   function recentClosed(days){
     var from=iso(addDays(TODAY,-(days||PROOF_WINDOW_DAYS)));
-    return db().jobs.filter(function(j){ return j.status==="Closed" && j.date>=from; });
+    return modeJobs().filter(function(j){ return j.status==="Closed" && j.date>=from; });
   }
   function proofExceptions(days){
     return recentClosed(days).filter(function(j){
@@ -2577,6 +2604,8 @@
     main.appendChild(ribbon()); main.appendChild(renderTopbar(o.crumb||"Command Center", o.active));
     var content=document.createElement("div"); content.className="content"; content.id="content";
     main.appendChild(content); main.appendChild(footer());
+    (function(){ var m=tradeMod(); if(m.k==="all" || o.active==="trades.html") return;
+      content.appendChild(el('<a class="tb-modestrip" href="trades.html" style="--tc:'+m.color+'"><span class="tb-ic">'+m.ic+'</span> Showing <b>'+esc(m.name)+'</b> only · <u>switch trade</u></a>')); })();
     app.appendChild(side); app.appendChild(main);
     document.body.innerHTML=""; document.body.appendChild(app); document.body.appendChild(backdrop);
     /* each room wears its own color (the Workday look, Nov 15 2026) */
@@ -2686,6 +2715,7 @@
     estimateValue:estimateValue, winRate:winRate, moveEstimate:moveEstimate, addEstimate:addEstimate,
     screenScore:screenScore, moveApplicant:moveApplicant, addApplicant:addApplicant, pipelineCounts:pipelineCounts,
     dryDay:dryDay, dryRoomState:dryRoomState, dryIsDry:dryIsDry, dryDueToday:dryDueToday, addDryReading:addDryReading, passReferral:passReferral, moveReferral:moveReferral,
+    modeLicences:modeLicences, modePermits:modePermits, modeJobs:modeJobs, modeTechs:modeTechs, modeEstimates:modeEstimates, modeTrades:modeTrades,
     TRADE_MODS:TRADE_MODS, tradeMods:tradeMods, tradeMode:tradeMode, tradeMod:tradeMod, setTradeMode:setTradeMode, inMode:inMode,
     referralOverdue:referralOverdue, referralConversion:referralConversion, topReferrers:topReferrers, logTouch:logTouch,
     createDoc:createDoc, sendDoc:sendDoc, openDoc:openDoc, signDoc:signDoc, docsAwaiting:docsAwaiting,

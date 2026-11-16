@@ -43,7 +43,7 @@
   
     var m='<div class="tablewrap"><table class="matrix"><thead><tr><th>Technician</th>'+
       dd.map(function(d){return '<th>'+S.dayLabel(d)+'</th>';}).join("")+'</tr></thead><tbody>';
-    var techs=S.db().techs.slice();
+    var techs=S.modeTechs().slice();
     techs.push({id:null,name:"— unassigned —",trade:""});
     techs.forEach(function(t){
       var mine=S.jobsInWeek(wk).filter(function(j){return j.techId===t.id;});
@@ -137,7 +137,7 @@
     var date=prompt("Date (YYYY-MM-DD)",S.iso(S.TODAY)); if(!date) return;
     var st=prompt("Start (HH:MM, 24h)","09:00"); if(!st) return;
     var hrs=parseFloat(prompt("Estimated hours","2")||"2");
-    var trade=prompt("Trade — "+S.TRADES.map(function(t){return t.k;}).join(", "),"HVAC")||"HVAC";
+    var trade=prompt("Trade — "+S.modeTrades().join(", "),S.modeTrades()[0])||S.modeTrades()[0];
     S.addJob({customerId:c.id,date:date,start:st,hours:hrs,trade:trade,task:prompt("Task","Diagnose and report")||"Diagnose and report"});
     S.toast("Job added — open and ready to dispatch.","ok"); render();
   });

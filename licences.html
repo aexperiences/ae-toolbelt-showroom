@@ -63,9 +63,9 @@
       }).join(""):'<tr><td colspan="5" class="muted">Nothing due. Every credential is current.</td></tr>')+'</tbody></table></div>'));
   
     host.appendChild(S.card('<h2>The roster</h2><div class="tablewrap"><table class="grid"><thead><tr><th>Technician</th>'+
-      S.LICENCES.map(function(l){return '<th class="vert">'+S.esc(l.k)+'</th>';}).join("")+'</tr></thead><tbody>'+
-      S.db().techs.map(function(t){ return '<tr><td><b>'+S.esc(t.name)+'</b><div class="muted small">'+S.esc(t.trade)+' · '+S.esc(t.truck||"")+'</div></td>'+
-        S.LICENCES.map(function(l){ var st=S.licStatus(t,l.k);
+      S.modeLicences().map(function(l){return '<th class="vert">'+S.esc(l.k)+'</th>';}).join("")+'</tr></thead><tbody>'+
+      S.modeTechs().map(function(t){ return '<tr><td><b>'+S.esc(t.name)+'</b><div class="muted small">'+S.esc(t.trade)+' · '+S.esc(t.truck||"")+'</div></td>'+
+        S.modeLicences().map(function(l){ var st=S.licStatus(t,l.k);
           var sym=st.state==="complete"||st.state==="current"?"✓":st.state==="expiring"?"!":st.state==="expired"?"✕":st.state==="missing"?"–":"·";
           var cls=st.state==="expired"||st.state==="missing"?"bad":st.state==="expiring"?"watch":(st.state==="complete"||st.state==="current")?"good":"";
           return '<td class="cell '+cls+'" title="'+S.esc(l.k+": "+(st.value||(l.required?"not on file":"not applicable")))+'">'+sym+'</td>'; }).join("")+'</tr>';
@@ -73,7 +73,7 @@
   
     host.appendChild(S.card('<h2>Work that requires a licence and a permit</h2>'+
       '<div class="tablewrap"><table><thead><tr><th>Work</th><th>Licence required</th><th>Why</th></tr></thead><tbody>'+
-      S.PERMIT_WORK.map(function(p){ return '<tr><td><b>'+S.esc(p.k)+'</b></td><td>'+S.esc(p.lic)+'</td>'+
+      S.modePermits().map(function(p){ return '<tr><td><b>'+S.esc(p.k)+'</b></td><td>'+S.esc(p.lic)+'</td>'+
         '<td class="muted small">'+S.esc(p.why)+'</td></tr>'; }).join("")+'</tbody></table></div>'+
       S.srcNote("Permit and licence rules vary by state, county and city. Confirm yours with the authority having jurisdiction before going live. This is not legal or code-compliance advice.")));
   

@@ -799,3 +799,4 @@ a.btn,button{touch-action:manipulation}
 .tb-cols h3{font-size:15px;margin:10px 0 4px}
 .tb-list,.tb-steps{margin:0;padding-left:20px;line-height:1.6}
 .tb-dry-ok{color:#2e7d4f;font-weight:700}.tb-dry-wet{color:#b5462f;font-weight:700}
+.tb-modestrip{display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:10px 14px;min-height:44px;border-radius:12px;border:2px solid var(--tc);background:color-mix(in srgb,var(--tc) 12%,transparent);color:inherit;text-decoration:none;font-size:15px}

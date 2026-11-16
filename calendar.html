@@ -71,7 +71,7 @@
   var wOff = 0;
 
   function jobsOn(dISO){
-    return S.db().jobs.filter(function(j){ return j.date===dISO; })
+    return S.modeJobs().filter(function(j){ return j.date===dISO; })
       .sort(function(a,b){ return S.hhmmToMin(a.start)-S.hhmmToMin(b.start); });
   }
   function hhmmShort(t){ var m=S.hhmmToMin(t), h=Math.floor(m/60), mm=m%60, ap=h>=12?"p":"a"; h=h%12||12;

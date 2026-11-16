@@ -97,7 +97,7 @@
     states.forEach(function(f){ if(f.truck.ping) pts.push({lat:f.truck.ping.lat,lng:f.truck.ping.lng}); });
     pts.push({lat:shop.lat,lng:shop.lng});
     var day = S.iso(S.TODAY);
-    var sites = S.db().jobs.filter(function(j){ return j.date===day; }).map(function(j){
+    var sites = S.modeJobs().filter(function(j){ return j.date===day; }).map(function(j){
       var c = S.customerById(j.customerId); return c && c.lat!==undefined ? {lat:c.lat,lng:c.lng,name:c.name,job:j} : null;
     }).filter(Boolean);
     sites.forEach(function(p){ pts.push(p); });
@@ -274,7 +274,7 @@
 
   function render(){
     host.innerHTML="";
-    var states = S.fleetState();
+    var states = S.fleetState().filter(function(f){ return !f.tech || S.inMode(f.tech.trade); });
     var rolling = states.filter(function(f){ return f.status==="En route" || f.status==="Rolling · unassigned"; }).length;
     var onsite  = states.filter(function(f){ return f.status==="On site"; }).length;
     var idle    = states.filter(function(f){ return f.status.indexOf("Idle")===0; }).length;

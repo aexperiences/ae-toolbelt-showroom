@@ -29,7 +29,7 @@
   function render(){
     host.innerHTML="";
     var pg=S.permitGaps();
-    var permitted=S.db().jobs.filter(function(j){return S.needsPermit(j.task);});
+    var permitted=S.modeJobs().filter(function(j){return S.needsPermit(j.task);});
     host.appendChild(S.card('<div class="stats">'+
       S.stat("Permitted jobs",permitted.length,"On the books, all time")+
       S.stat("Missing a number",pg.length,pg.length?"Closed without documentation":"All documented",pg.length?"bad":"good")+
@@ -57,7 +57,7 @@
   
     host.appendChild(S.card('<h2>Work that cannot close without a permit</h2>'+
       '<div class="tablewrap"><table><thead><tr><th>Operation</th><th>Licence</th><th>Why</th></tr></thead><tbody>'+
-      S.PERMIT_WORK.map(function(p){ return '<tr><td><b>'+S.esc(p.k)+'</b></td><td>'+S.esc(p.lic)+'</td>'+
+      S.modePermits().map(function(p){ return '<tr><td><b>'+S.esc(p.k)+'</b></td><td>'+S.esc(p.lic)+'</td>'+
         '<td class="muted small">'+S.esc(p.why)+'</td></tr>'; }).join("")+'</tbody></table></div>'+
       S.srcNote("Permit thresholds vary by jurisdiction. Confirm the list against your city and county before go-live. Not legal or code-compliance advice.")+
       '<div class="note">Pulling the permit itself happens on the jurisdiction\'s portal — that hop is named as a vendor step rather than implied to be native. The OS tracks the number and the inspection.</div>'));

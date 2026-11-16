@@ -36,7 +36,7 @@
   function mText(m){ return m ? (m.kind==="area" ? m.label+": "+Math.round(m.surfaceSqft)+" sq ft"+(m.pitch!=="Flat"?" of roof at "+m.pitch+" pitch":"")+", "+Math.round(m.lengthFt)+" ft around the edge"
     : m.label+": "+Math.round(m.lengthFt)+" linear ft") : ""; }
   function renderAi(){
-    var cs=S.db().customers, trades=(S.TRADES||[]).map(function(t){ return t.k||t.name||t; });
+    var cs=S.db().customers, trades=S.modeTrades();
     aiHost.innerHTML="";
     aiHost.appendChild(S.card('<h2>Draft it with AI</h2>'+
       '<p class="sub">Say what the job is in plain words. You get the work steps, parts from your own parts list, and labor hours. Prices come from your own costs and rates, never from the AI.</p>'+
@@ -82,7 +82,7 @@
 
   function render(){
     host.innerHTML="";
-    var es=S.db().estimates;
+    var es=S.modeEstimates();
     host.appendChild(S.card('<div class="stats">'+
       S.stat("Open value",S.money(S.estimateValue()),"Requested, scheduled and quoted","good")+
       S.stat("Win rate",S.winRate()==null?"—":S.pct(S.winRate()),"Of everything decided")+
@@ -144,7 +144,7 @@
     var c=cs[parseInt(p,10)-1]||cs.filter(function(x){return x.name.toLowerCase().indexOf(String(p).toLowerCase())>=0;})[0];
     if(!c) return S.toast("No customer matched.","bad");
     S.addEstimate({customerId:c.id,title:prompt("What is it for?")||"Estimate",
-      trade:prompt("Trade","HVAC")||"HVAC",
+      trade:prompt("Trade",S.modeTrades()[0])||S.modeTrades()[0],
       amount:parseFloat(prompt("Quoted amount (0 if not priced)","0")||"0"),
       cost:parseFloat(prompt("Your cost","0")||"0"), note:prompt("Notes")||""});
     S.toast("Logged.","ok"); render();
