@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>24-Hour Line · Toolbelt OS</title>
+<meta name="description" content="Who is on call tonight, the questions to ask an emergency caller, and how fast every call was answered.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/oncall.html">
+<meta property="og:title" content="24-Hour Line · Toolbelt OS">
+<meta property="og:description" content="Who is on call tonight, the questions to ask an emergency caller, and how fast every call was answered.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"oncall.html", crumb:"24-Hour Line" });
+  content.appendChild(S.page("24-Hour Line", "Water does not wait for business hours. This room says who is on call tonight, gives whoever answers the questions to ask, and keeps score: how fast the caller heard back and how fast a truck got there.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+  function each(sel,fn){ Array.prototype.forEach.call(host.querySelectorAll(sel),fn); }
+
+  var QS=["What happened, and where in the house?","Is the water still coming in? Do you know where the shut-off is?","Is it clean water, from a sink or the roof, or sewage?","How long has it been wet?","Is anyone in danger — power near water, a sagging ceiling?","Do you have homeowner's insurance? Which company?","The address, and a phone number that will be answered"];
+  function render(){
+    host.innerHTML="";
+    var oc=S.db().oncall||{rota:[],calls:[]}, today=S.iso(S.TODAY);
+    var now=(oc.rota||[]).filter(function(r){return r.from<=today && today<=r.to;})[0];
+    var avgCall=oc.calls.length?Math.round(oc.calls.reduce(function(a,c){return a+c.called;},0)/oc.calls.length):0;
+    var avgOn=oc.calls.length?Math.round(oc.calls.reduce(function(a,c){return a+c.onsite;},0)/oc.calls.length):0;
+    host.appendChild(S.card('<div class="stats">'+S.stat("On call now",now?S.esc((function(n){var p=n.split(" ");return p[0]+(p[1]?" "+p[1][0]+".":"");})(S.techName(now.who))):"Nobody",now?"Until "+S.dayLabel(now.to):"Set the rotation",now?"good":"bad")+
+      S.stat("Called back in",avgCall+" min","Average · goal "+oc.callbackMin+" min",avgCall<=oc.callbackMin?"good":"watch")+
+      S.stat("On site in",avgOn+" min","Average · goal "+oc.onsiteHrs+" hours",avgOn<=oc.onsiteHrs*60?"good":"watch")+'</div>'));
+    host.appendChild(S.card('<h2>When the phone rings at night</h2><p class="sub">Ask these, in this order. Then call back inside '+oc.callbackMin+' minutes with a time the truck will be there.</p><ol class="tb-steps">'+QS.map(function(q){return '<li>'+S.esc(q)+'</li>';}).join("")+'</ol>'));
+    host.appendChild(S.card('<h2>The rotation</h2><div class="tablewrap"><table><thead><tr><th>Who</th><th>From</th><th>To</th></tr></thead><tbody>'+
+      oc.rota.map(function(r){return '<tr><td><b>'+S.esc(S.techName(r.who))+'</b>'+(r===now?' '+S.tag("now","good"):'')+'</td><td class="mono small">'+S.esc(r.from)+'</td><td class="mono small">'+S.esc(r.to)+'</td></tr>';}).join("")+'</tbody></table></div>'+
+      '<p><button class="btn ghost" id="rota">Add a week</button></p>'));
+    host.appendChild(S.card('<h2>After-hours calls</h2><div class="tablewrap"><table><thead><tr><th>When</th><th>Caller · what</th><th class="right">Called back</th><th class="right">On site</th></tr></thead><tbody>'+
+      oc.calls.map(function(c){return '<tr><td class="mono small">'+S.esc(c.at)+'</td><td><b>'+S.esc(c.caller)+'</b><div class="muted small">'+S.esc(c.what)+'</div></td><td class="right mono">'+c.called+' min</td><td class="right mono">'+c.onsite+' min</td></tr>';}).join("")+'</tbody></table></div>'+
+      '<p><button class="btn" id="log">Log a call</button></p>'));
+    host.querySelector("#log").addEventListener("click",function(){ var c=prompt("Caller"); if(!c) return; var w=prompt("What happened?")||"";
+      var cb=+(prompt("Minutes until you called back","10")||0), on=+(prompt("Minutes until the truck was there","90")||0);
+      S.setStore("oncall",function(o){ o.calls.unshift({ at:S.iso(S.TODAY)+" "+new Date().toTimeString().slice(0,5), caller:c, what:w, called:cb, onsite:on, by:now?now.who:null }); }); render(); });
+    host.querySelector("#rota").addEventListener("click",function(){ var ts=S.db().techs; var pick=prompt("Who?\n"+ts.map(function(t,n){return (n+1)+". "+t.name;}).join("\n"),"1"); var t=ts[(+pick||0)-1]; if(!t) return;
+      var last=oc.rota.length?oc.rota[oc.rota.length-1].to:today; var f=S.iso(S.addDays(new Date(last+"T12:00:00"),1)), to=S.iso(S.addDays(new Date(last+"T12:00:00"),7));
+      S.setStore("oncall",function(o){ o.rota.push({ who:t.id, from:f, to:to }); }); render(); });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Claim Packet · Toolbelt OS</title>
+<meta name="description" content="Everything the insurance adjuster needs to pay a restoration job, in one packet.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/claims.html">
+<meta property="og:title" content="Claim Packet · Toolbelt OS">
+<meta property="og:description" content="Everything the insurance adjuster needs to pay a restoration job, in one packet.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"claims.html", crumb:"Claim Packet" });
+  content.appendChild(S.page("Claim Packet", "Restoration gets paid through the insurance claim. The adjuster pays when the packet is complete: the signed work authorization, the photos, the daily drying log, the equipment log, the itemized estimate and the signed certificate of completion. This room shows what each claim is still missing.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+  function each(sel,fn){ Array.prototype.forEach.call(host.querySelectorAll(sel),fn); }
+
+  var STATUS=["Open","Estimate sent","Approved","Paid"];
+  function render(){
+    host.innerHTML="";
+    var cs=S.db().claims||[], docs=S.claimDocs();
+    var missing=cs.filter(function(c){ return docs.some(function(d){ return !c.docs[d[0]]; }); });
+    host.appendChild(S.card('<div class="stats">'+S.stat("Open claims",cs.filter(function(c){return c.status!=="Paid";}).length,"Not paid yet")+
+      S.stat("Packets missing a piece",missing.length,missing.length?"The adjuster will ask":"Every packet complete",missing.length?"watch":"good")+
+      S.stat("Paid",cs.filter(function(c){return c.status==="Paid";}).length,"Closed out","good")+'</div>'));
+    cs.forEach(function(c,i){
+      var have=docs.filter(function(d){return c.docs[d[0]];}).length;
+      host.appendChild(S.card('<div class="between"><div><h2>'+S.esc(c.customer)+'</h2><div class="sub">'+S.esc(c.carrier)+' · claim '+S.esc(c.claimNo)+' · adjuster '+S.esc(c.adjuster)+(S.seesMoney&&S.seesMoney()===false?'':' · deductible '+S.money(c.deductible))+'</div></div>'+
+        '<select data-s="'+i+'">'+STATUS.map(function(s){return '<option'+(s===c.status?' selected':'')+'>'+s+'</option>';}).join("")+'</select></div>'+
+        '<p class="small muted">'+have+' of '+docs.length+' pieces in the packet</p>'+S.bar(have/docs.length*100)+
+        '<div class="tb-checks">'+docs.map(function(d){ return '<label class="tb-check"><input type="checkbox" data-c="'+i+'" data-k="'+d[0]+'"'+(c.docs[d[0]]?' checked':'')+'> '+S.esc(d[1])+'</label>'; }).join("")+'</div>'+
+        '<p><button class="btn ghost" data-print="'+i+'">Print the packet cover</button></p>'));
+    });
+    if(!cs.length) host.appendChild(S.card('<p>No claims yet. A water, mold or fire job billed to insurance starts a claim here.</p>'));
+    host.appendChild(S.card('<button class="btn" id="add">Start a claim</button>'));
+    each("[data-c]",function(b){ b.addEventListener("change",function(){ var i=+b.getAttribute("data-c"), k=b.getAttribute("data-k"), v=b.checked;
+      S.setStore("claims",function(a){ a[i].docs[k]=v; }); render(); }); });
+    each("[data-s]",function(b){ b.addEventListener("change",function(){ var i=+b.getAttribute("data-s"), v=b.value; S.setStore("claims",function(a){ a[i].status=v; }); S.toast("Claim marked "+v+".","ok"); render(); }); });
+    each("[data-print]",function(b){ b.addEventListener("click",function(){ var c=(S.db().claims||[])[+b.getAttribute("data-print")];
+      var w=window.open("","_blank"); if(!w) return; w.document.write('<title>Claim packet — '+S.esc(c.customer)+'</title><body style="font:16px system-ui;padding:40px"><h1>Claim packet</h1><p><b>'+S.esc(S.db().shop.name)+'</b></p><p>Customer: '+S.esc(c.customer)+'<br>Carrier: '+S.esc(c.carrier)+'<br>Claim: '+S.esc(c.claimNo)+'<br>Adjuster: '+S.esc(c.adjuster)+'</p><h2>Enclosed</h2><ul>'+
+        S.claimDocs().map(function(d){return '<li>'+(c.docs[d[0]]?'☑ ':'☐ ')+S.esc(d[1])+'</li>';}).join("")+'</ul></body>'); w.document.close(); w.print(); }); });
+    host.querySelector("#add").addEventListener("click",function(){ var n=prompt("Customer name"); if(!n) return; var car=prompt("Insurance carrier","Homeowner's insurance")||"";
+      S.setStore("claims",function(a){ a.push({ id:"cl"+Date.now(), job:null, customer:n, carrier:car, claimNo:prompt("Claim number")||"", adjuster:prompt("Adjuster name")||"", deductible:+(prompt("Deductible (dollars)","0")||0), status:"Open", docs:{} }); }); render(); });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Contents Pack-out · Toolbelt OS</title>
+<meta name="description" content="Fire and water pack-outs — every box by room, what can be restored, and where it is stored.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/packout.html">
+<meta property="og:title" content="Contents Pack-out · Toolbelt OS">
+<meta property="og:description" content="Fire and water pack-outs — every box by room, what can be restored, and where it is stored.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"packout.html", crumb:"Contents Pack-out" });
+  content.appendChild(S.page("Contents Pack-out", "When a fire or flood empties a house, everything the family owns goes into boxes. This room counts every box by room, marks what can be cleaned and what cannot, and says where it is stored — the list the adjuster and the family both ask for.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+  function each(sel,fn){ Array.prototype.forEach.call(host.querySelectorAll(sel),fn); }
+
+  function render(){
+    host.innerHTML="";
+    var ps=S.db().packout||[];
+    ps.forEach(function(p,i){ var tot=p.boxes.reduce(function(a,b){return a+b.n;},0), lost=p.boxes.filter(function(b){return /Not salvageable/.test(b.cond);}).reduce(function(a,b){return a+b.n;},0);
+      host.appendChild(S.card('<div class="between"><div><h2>'+S.esc(p.customer)+'</h2><div class="sub">'+S.esc(p.city)+' · stored at '+S.esc(p.storage)+'</div></div>'+S.tag(p.status,"good")+'</div>'+
+        '<div class="stats">'+S.stat("Boxes",tot,"Packed out")+S.stat("To restore",tot-lost,"Clean and return","good")+S.stat("Not salvageable",lost,"Photographed for the claim",lost?"watch":"good")+'</div>'+
+        '<div class="tablewrap"><table><thead><tr><th>Room</th><th class="right">Boxes</th><th>Condition</th></tr></thead><tbody>'+p.boxes.map(function(b){return '<tr><td>'+S.esc(b.room)+'</td><td class="right mono">'+b.n+'</td><td>'+S.esc(b.cond)+'</td></tr>';}).join("")+'</tbody></table></div>'+
+        '<p><button class="btn ghost" data-box="'+i+'">Add boxes</button></p>')); });
+    if(!ps.length) host.appendChild(S.card('<p>No pack-outs right now.</p>'));
+    host.appendChild(S.card('<button class="btn" id="add">Start a pack-out</button>'));
+    each("[data-box]",function(b){ b.addEventListener("click",function(){ var r=prompt("Which room?"); if(!r) return; var n=+(prompt("How many boxes?","1")||0); var c=confirm("Can these be cleaned and restored?\n\nOK = yes, Cancel = not salvageable")?"Clean & restore":"Not salvageable — photographed";
+      S.setStore("packout",function(a){ a[+b.getAttribute("data-box")].boxes.push({ room:r, n:n, cond:c }); }); render(); }); });
+    host.querySelector("#add").addEventListener("click",function(){ var c=prompt("Customer / job"); if(!c) return;
+      S.setStore("packout",function(a){ a.unshift({ id:"p"+Date.now(), customer:c, city:prompt("City","")||"", storage:prompt("Where is it stored?","Shop")||"", boxes:[], status:"Packing" }); }); render(); });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

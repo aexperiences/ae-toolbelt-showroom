@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mold & Radon · Toolbelt OS</title>
+<meta name="description" content="Mold jobs sized by EPA guidance and radon tests read against the EPA action level of 4.0 pCi/L.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/moldradon.html">
+<meta property="og:title" content="Mold & Radon · Toolbelt OS">
+<meta property="og:description" content="Mold jobs sized by EPA guidance and radon tests read against the EPA action level of 4.0 pCi/L.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"moldradon.html", crumb:"Mold & Radon" });
+  content.appendChild(S.page("Mold & Radon", "Mold jobs sized the way EPA guidance sizes them, and radon tests read against the EPA action level of 4.0 picocuries per liter. Enter the square feet or the reading and the room tells you what it calls for.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+  function each(sel,fn){ Array.prototype.forEach.call(host.querySelectorAll(sel),fn); }
+
+  function render(){
+    host.innerHTML="";
+    var ms=S.db().mold||[], rs=S.db().radon||[];
+    host.appendChild(S.card('<h2>Mold</h2><p class="sub">EPA guidance: up to 10 square feet is small, 10 to 100 is medium, over 100 is large and needs full containment.</p><div class="tablewrap"><table><thead><tr><th>Customer</th><th>Where</th><th class="right">Sq ft</th><th>Size</th><th>Status</th></tr></thead><tbody>'+
+      ms.map(function(m){ var b=S.moldBand(m.sqft); return '<tr><td><b>'+S.esc(m.customer)+'</b><div class="muted small">'+S.esc(m.city)+'</div></td><td>'+S.esc(m.where)+'<div class="muted small">Cause: '+S.esc(m.cause)+'</div></td><td class="right mono">'+m.sqft+'</td><td>'+S.tag(b.k,b.k==="Large"?"bad":b.k==="Medium"?"watch":"good")+'<div class="muted small">'+S.esc(b.note)+'</div></td><td>'+S.esc(m.status)+'</td></tr>'; }).join("")+
+      '</tbody></table></div><p><button class="btn" id="addM">Add a mold job</button></p>'));
+    host.appendChild(S.card('<h2>Radon</h2><p class="sub">EPA action level: 4.0 pCi/L. Between 2 and 4, EPA suggests considering a fix.</p><div class="tablewrap"><table><thead><tr><th>Customer</th><th>Tested</th><th class="right">pCi/L</th><th>What it means</th><th>Status</th></tr></thead><tbody>'+
+      rs.map(function(r){ var b=S.radonBand(r.level); return '<tr><td><b>'+S.esc(r.customer)+'</b><div class="muted small">'+S.esc(r.city)+'</div></td><td class="mono small">'+S.esc(r.date)+'</td><td class="right mono">'+r.level.toFixed(1)+'</td><td>'+S.tag(b.k,b.band)+'<div class="muted small">'+S.esc(b.note)+'</div></td><td>'+S.esc(r.status)+'</td></tr>'; }).join("")+
+      '</tbody></table></div><p><button class="btn" id="addR">Log a radon test</button></p>'));
+    host.querySelector("#addM").addEventListener("click",function(){ var c=prompt("Customer"); if(!c) return; var sq=+(prompt("How many square feet of mold?","10")||0);
+      S.setStore("mold",function(a){ a.unshift({ id:"m"+Date.now(), customer:c, city:prompt("City","")||"", where:prompt("Where in the house?","")||"", sqft:sq, cause:prompt("What caused it?","")||"", status:"Assessed" }); }); S.toast(S.moldBand(sq).k+" job.","ok"); render(); });
+    host.querySelector("#addR").addEventListener("click",function(){ var c=prompt("Customer"); if(!c) return; var l=parseFloat(prompt("Reading in pCi/L","")||""); if(isNaN(l)) return;
+      S.setStore("radon",function(a){ a.unshift({ id:"r"+Date.now(), customer:c, city:prompt("City","")||"", level:l, date:S.iso(S.TODAY), status:S.radonBand(l).k==="Fix"?"Mitigation to quote":"Logged" }); }); S.toast(S.radonBand(l).note,"ok"); render(); });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

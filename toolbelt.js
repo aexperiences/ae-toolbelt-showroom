@@ -70,7 +70,7 @@
     return { _t:now(), started:now(), sample:true, tier:"grandsuite", adds:[], offs:[],
       shop:clone(SEED.shop), techs:clone(SEED.techs), customers:clone(SEED.customers),
       jobs:clone(SEED.jobs), calls:clone(SEED.calls), trucks:clone(SEED.trucks), memberships:clone(SEED.memberships), parts:clone(SEED.parts), applicants:clone(SEED.applicants),
-      referrers:clone(SEED.referrers), estimates:clone(SEED.estimates), drylogs:clone(SEED.drylogs), table:clone(SEED.table),
+      referrers:clone(SEED.referrers), estimates:clone(SEED.estimates), drylogs:clone(SEED.drylogs), table:clone(SEED.table), claims:clone(SEED.claims), equipment:clone(SEED.equipment), mold:clone(SEED.mold), radon:clone(SEED.radon), packout:clone(SEED.packout), oncall:clone(SEED.oncall),
       documents:clone(SEED.documents), systems:clone(SEED.systems),
       approvals:clone(SEED.approvals), bus:[], seq:1 };
   }
@@ -85,6 +85,8 @@
     if(!d.memberships){ d.memberships = d.sample===false ? [] : clone(SEED.memberships); write(d); }
     if(d.sample!==false && !d.techs.some(function(t){return t.id==="t9";})){ SEED.techs.filter(function(t){return t.trade==="Restoration";}).forEach(function(t){ d.techs.push(clone(t)); });
       SEED.jobs.filter(function(j){return j.trade==="Restoration";}).forEach(function(j){ var c=clone(j); c.id="r"+c.id; d.jobs.push(c); }); write(d); }
+    ["claims","equipment","mold","radon","packout"].forEach(function(k){ if(!d[k]){ d[k] = d.sample===false ? [] : clone(SEED[k]); write(d); } });
+    if(!d.oncall){ d.oncall = d.sample===false ? { callbackMin:15, onsiteHrs:2, rota:[], calls:[] } : clone(SEED.oncall); write(d); }
     if(!d.drylogs){ d.drylogs = d.sample===false ? [] : clone(SEED.drylogs); write(d); }
     if(!d.table){ d.table = d.sample===false ? { name:"", meets:"", where:"", members:[], referrals:[], rotations:[] } : clone(SEED.table); write(d); }
     return d; }
@@ -653,6 +655,47 @@
         note:"Water calls go out by turn; answer fast or the turn passes." }
     ]
   };
+  /* RESTORATION ROOMS (Nov 16 2026): claim packet, equipment, mold & radon,
+     contents pack-out, the 24-hour line. Sample book; every number is the shop's own. */
+  SEED.claims = [
+    { id:"cl1", job:"w1", customer:"Hendricks", carrier:"Homeowner's insurance", claimNo:"(claim number)", adjuster:"(adjuster name)", deductible:1000,
+      status:"Estimate sent", docs:{ auth:true, photos:true, drylog:true, equip:true, estimate:true, cert:false } },
+    { id:"cl2", job:"w2", customer:"Ochoa", carrier:"Homeowner's insurance", claimNo:"(claim number)", adjuster:"(adjuster name)", deductible:2500,
+      status:"Open", docs:{ auth:true, photos:true, drylog:false, equip:true, estimate:false, cert:false } }
+  ];
+  SEED.equipment = [
+    { id:"am1", type:"Air mover", tag:"AM-01", job:"w1", since:iso(addDays(TODAY,-2)) },
+    { id:"am2", type:"Air mover", tag:"AM-02", job:"w1", since:iso(addDays(TODAY,-2)) },
+    { id:"am3", type:"Air mover", tag:"AM-03", job:"w1", since:iso(addDays(TODAY,-2)) },
+    { id:"am4", type:"Air mover", tag:"AM-04", job:"w2", since:iso(addDays(TODAY,-1)) },
+    { id:"am5", type:"Air mover", tag:"AM-05", job:"w2", since:iso(addDays(TODAY,-1)) },
+    { id:"am6", type:"Air mover", tag:"AM-06", job:null, since:null },
+    { id:"dh1", type:"Dehumidifier", tag:"DH-01", job:"w1", since:iso(addDays(TODAY,-2)) },
+    { id:"dh2", type:"Dehumidifier", tag:"DH-02", job:"w2", since:iso(addDays(TODAY,-1)) },
+    { id:"dh3", type:"Dehumidifier", tag:"DH-03", job:null, since:null },
+    { id:"as1", type:"Air scrubber", tag:"AS-01", job:"m1", since:iso(addDays(TODAY,-3)) },
+    { id:"mr1", type:"Moisture meter", tag:"MM-01", job:null, since:null }
+  ];
+  SEED.mold = [
+    { id:"m1", customer:"Buyer on 4th St", city:"Coeur d'Alene", where:"Crawlspace under the kitchen", sqft:60, cause:"Slow leak at the dishwasher supply", status:"Containment up" },
+    { id:"m2", customer:"Patel", city:"Hayden", where:"Bathroom ceiling", sqft:6, cause:"No exhaust fan", status:"Assessed" }
+  ];
+  SEED.radon = [
+    { id:"r1", customer:"Listing on Mullan Ave", city:"Post Falls", level:6.2, date:iso(addDays(TODAY,-5)), status:"Mitigation quoted" },
+    { id:"r2", customer:"Hendricks", city:"Coeur d'Alene", level:1.4, date:iso(addDays(TODAY,-12)), status:"Below action level" }
+  ];
+  SEED.packout = [
+    { id:"p1", customer:"Kitchen fire — Ruiz", city:"Rathdrum", storage:"Shop bay 2",
+      boxes:[ { room:"Kitchen", n:14, cond:"Clean & restore" }, { room:"Living room", n:9, cond:"Clean & restore" },
+              { room:"Kitchen", n:4, cond:"Not salvageable — photographed" }, { room:"Primary bedroom", n:6, cond:"Clean & restore" } ],
+      status:"In storage" }
+  ];
+  SEED.oncall = {
+    callbackMin:15, onsiteHrs:2,
+    rota:[ { who:"t9", from:iso(addDays(TODAY,-3)), to:iso(addDays(TODAY,3)) }, { who:"t10", from:iso(addDays(TODAY,4)), to:iso(addDays(TODAY,10)) } ],
+    calls:[ { at:iso(addDays(TODAY,-1))+" 02:14", caller:"Ochoa", what:"Basement flooding, sump pump quit", called:8, onsite:95, by:"t9" },
+            { at:iso(addDays(TODAY,-4))+" 23:40", caller:"Hendricks", what:"Water through the hall ceiling", called:11, onsite:70, by:"t9" } ]
+  };
   SEED.referrers = [
     { id:"r1", org:"Fairmount Builders", contact:"Jeanette Pruitt", type:"General contractor",
       phone:"(208) 555-0206", city:"Post Falls", lastTouch:iso(addDays(TODAY,-5)), cadenceDays:14,
@@ -1159,6 +1202,18 @@
     w.rooms.forEach(function(r,i){ if(values[i]!==undefined && values[i]!=="" && !isNaN(+values[i])) r.readings.push(+values[i]); });
     if(atmo) w.atmo.push(atmo);
     (d.bus=d.bus||[]).push({ stamp:iso(TODAY), from:"Field", to:"Office", body:"Drying reading logged for "+w.customer+"." }); }); }
+
+  /* EPA guidance on mold area (Mold Remediation in Schools and Commercial Buildings): up to 10 sq ft small,
+     10 to 100 medium, over 100 large (full containment). Radon: EPA action level 4.0 pCi/L; consider fixing 2 to 4. */
+  function moldBand(sqft){ return sqft<=10 ? { k:"Small", note:"Up to 10 square feet. Clean with care; no containment." }
+    : sqft<=100 ? { k:"Medium", note:"10 to 100 square feet. Limited containment and trained workers." }
+    : { k:"Large", note:"Over 100 square feet. Full containment, negative air and trained remediators." }; }
+  function radonBand(l){ return l>=4 ? { k:"Fix", band:"bad", note:"At or above the EPA action level of 4.0 pCi/L. Mitigate." }
+    : l>=2 ? { k:"Consider", band:"watch", note:"Between 2 and 4 pCi/L. EPA suggests considering a fix." }
+    : { k:"OK", band:"good", note:"Below 2 pCi/L." }; }
+  function equipDays(u){ return u.job && u.since ? Math.max(1, Math.round((new Date(iso(TODAY)+"T12:00:00")-new Date(u.since+"T12:00:00"))/86400000)+1) : 0; }
+  function claimDocs(){ return [["auth","Work authorization signed on site"],["photos","Photo log, room by room"],["drylog","Daily drying log"],["equip","Equipment log"],["estimate","Itemized estimate to the carrier"],["cert","Certificate of completion signed"]]; }
+  function setStore(key, fn){ return save(function(d){ fn(d[key], d); }); }
   function passReferral(rec){ return save(function(d){ d.table.referrals.unshift(Object.assign({ date:iso(TODAY), status:"Passed", value:0 }, rec)); }); }
   function moveReferral(i, status){ return save(function(d){ var r=d.table.referrals[i]; if(r) r.status=status; }); }
   function referralOverdue(r){ if(!r.cadenceDays) return false;
@@ -2371,6 +2426,11 @@
       { href:"worksheets.html",label:"Worksheets & Permits",ic:"✎", room:"work", accent:"work" , icon:"icons/worksheets.svg"},
       { href:"checkpoints.html",label:"Checkpoints",        ic:"☑", room:"work", accent:"work" , icon:"icons/comply.svg"},
       { href:"drying.html",    label:"Drying Log",          ic:"≈", accent:"field", icon:"icons/measure.svg"},
+      { href:"claims.html",    label:"Claim Packet",        ic:"▤", accent:"field", icon:"icons/documents.svg"},
+      { href:"equipment.html", label:"Drying Equipment",    ic:"▣", accent:"field", icon:"icons/truck-stock.svg"},
+      { href:"moldradon.html", label:"Mold & Radon",        ic:"◬", accent:"field", icon:"icons/comply.svg"},
+      { href:"packout.html",   label:"Contents Pack-out",   ic:"▦", accent:"field", icon:"icons/records.svg"},
+      { href:"oncall.html",    label:"24-Hour Line",        ic:"☏", accent:"field", icon:"icons/desk.svg"},
       { href:"timeclock.html", label:"Time Clock",          ic:"◷", accent:"field", icon:"icons/timeclock.svg" } ]},
     { group:"The Trucks", items:[
       { href:"licences.html",  label:"Licences",        ic:"⛨", room:"licences", accent:"licence" , icon:"icons/law.svg"},
@@ -2714,6 +2774,7 @@
     arrive:arrive, depart:depart, assign:assign, addJob:addJob, removeJob:removeJob, setPermit:setPermit,
     estimateValue:estimateValue, winRate:winRate, moveEstimate:moveEstimate, addEstimate:addEstimate,
     screenScore:screenScore, moveApplicant:moveApplicant, addApplicant:addApplicant, pipelineCounts:pipelineCounts,
+    moldBand:moldBand, radonBand:radonBand, equipDays:equipDays, claimDocs:claimDocs, setStore:setStore,
     dryDay:dryDay, dryRoomState:dryRoomState, dryIsDry:dryIsDry, dryDueToday:dryDueToday, addDryReading:addDryReading, passReferral:passReferral, moveReferral:moveReferral,
     modeLicences:modeLicences, modePermits:modePermits, modeJobs:modeJobs, modeTechs:modeTechs, modeEstimates:modeEstimates, modeTrades:modeTrades,
     TRADE_MODS:TRADE_MODS, tradeMods:tradeMods, tradeMode:tradeMode, tradeMod:tradeMod, setTradeMode:setTradeMode, inMode:inMode,

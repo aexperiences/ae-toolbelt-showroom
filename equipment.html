@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drying Equipment · Toolbelt OS</title>
+<meta name="description" content="Every air mover, dehumidifier and air scrubber — which job it is on and how many days it has been there.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/equipment.html">
+<meta property="og:title" content="Drying Equipment · Toolbelt OS">
+<meta property="og:description" content="Every air mover, dehumidifier and air scrubber — which job it is on and how many days it has been there.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"equipment.html", crumb:"Drying Equipment" });
+  content.appendChild(S.page("Drying Equipment", "Every air mover, dehumidifier and air scrubber the shop owns: which job it is sitting on, and how many days it has been there. Equipment days are billed on the claim, so this is money — and a unit forgotten on a dry job is a unit not working on a wet one.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+  function each(sel,fn){ Array.prototype.forEach.call(host.querySelectorAll(sel),fn); }
+
+  function render(){
+    host.innerHTML="";
+    var eq=S.db().equipment||[], out=eq.filter(function(u){return u.job;}), free=eq.filter(function(u){return !u.job;});
+    var days=out.reduce(function(a,u){return a+S.equipDays(u);},0);
+    var dryIds=(S.db().drylogs||[]).filter(S.dryIsDry).map(function(w){return w.id;});
+    var stale=out.filter(function(u){return dryIds.indexOf(u.job)>=0;});
+    host.appendChild(S.card('<div class="stats">'+S.stat("On jobs",out.length,"Out of "+eq.length+" units")+S.stat("In the shop",free.length,"Ready to go","good")+
+      S.stat("Equipment days",days,"To bill on the claims")+S.stat("Left on a dry job",stale.length,stale.length?"Pull it":"None",stale.length?"bad":"good")+'</div>'));
+    var jobs={}; (S.db().drylogs||[]).forEach(function(w){ jobs[w.id]=w.customer; }); (S.db().mold||[]).forEach(function(m){ jobs[m.id]=m.customer+" (mold)"; });
+    host.appendChild(S.card('<h2>Every unit</h2><div class="tablewrap"><table><thead><tr><th>Unit</th><th>Type</th><th>Where</th><th class="right">Days</th><th></th></tr></thead><tbody>'+
+      eq.map(function(u,i){ return '<tr><td class="mono"><b>'+S.esc(u.tag)+'</b></td><td>'+S.esc(u.type)+'</td><td>'+(u.job?S.esc(jobs[u.job]||u.job):'<span class="muted">In the shop</span>')+'</td>'+
+        '<td class="right mono">'+(u.job?S.equipDays(u):'—')+'</td><td class="right">'+(u.job?'<button class="btn ghost" data-pull="'+i+'">Bring it back</button>':'<button class="btn ghost" data-send="'+i+'">Send to a job</button>')+'</td></tr>'; }).join("")+'</tbody></table></div>'+
+      '<p><button class="btn" id="add">Add a unit</button></p>'));
+    each("[data-pull]",function(b){ b.addEventListener("click",function(){ S.setStore("equipment",function(a){ var u=a[+b.getAttribute("data-pull")]; u.job=null; u.since=null; }); S.toast("Back in the shop.","ok"); render(); }); });
+    each("[data-send]",function(b){ b.addEventListener("click",function(){ var ids=Object.keys(jobs); var pick=prompt("Which job?\n"+ids.map(function(k,n){return (n+1)+". "+jobs[k];}).join("\n"),"1"); var k=ids[(+pick||0)-1]; if(!k) return;
+      S.setStore("equipment",function(a){ var u=a[+b.getAttribute("data-send")]; u.job=k; u.since=S.iso(S.TODAY); }); S.toast("Sent to "+jobs[k]+".","ok"); render(); }); });
+    host.querySelector("#add").addEventListener("click",function(){ var t=prompt("Type (Air mover, Dehumidifier, Air scrubber…)","Air mover"); if(!t) return; var g=prompt("Tag number","");
+      S.setStore("equipment",function(a){ a.push({ id:"u"+Date.now(), type:t, tag:g||t, job:null, since:null }); }); render(); });
+  }
+  render();
+})();
+</script>
+</body>
+</html>
