@@ -87,9 +87,11 @@
     if(!d.trucks){ d.trucks = d.sample===false ? [] : clone(SEED.trucks); write(d); }
     if(!d.memberships){ d.memberships = d.sample===false ? [] : clone(SEED.memberships); write(d); }
     if(d.sample!==false && !d.techs.some(function(t){return t.id==="t9";})){ SEED.techs.filter(function(t){return t.trade==="Restoration";}).forEach(function(t){ d.techs.push(clone(t)); });
-      SEED.jobs.filter(function(j){return j.trade==="Restoration";}).forEach(function(j){ var c=clone(j); c.id="r"+c.id; d.jobs.push(c); }); write(d); }
+      SEED.jobs.filter(function(j){return j.trade==="Restoration";}).forEach(function(j){ var c=clone(j); c.id="r"+c.id; d.jobs.push(c); });
+      SEED.trucks.filter(function(v){return v.techId==="t9"||v.techId==="t10";}).forEach(function(v){ if(d.trucks && !d.trucks.some(function(x){return x.id===v.id;})) d.trucks.push(clone(v)); }); write(d); }
     ["claims","equipment","mold","radon","packout"].forEach(function(k){ if(!d[k]){ d[k] = d.sample===false ? [] : clone(SEED[k]); write(d); } });
     if(!d.oncall){ d.oncall = d.sample===false ? { callbackMin:15, onsiteHrs:2, rota:[], calls:[] } : clone(SEED.oncall); write(d); }
+    if(d.sample!==false && d.trucks && !d.trucks.some(function(v){return v.id==="v9";})){ SEED.trucks.filter(function(v){return v.id==="v9"||v.id==="v10";}).forEach(function(v){ d.trucks.push(clone(v)); }); write(d); }
     if(!d.drylogs){ d.drylogs = d.sample===false ? [] : clone(SEED.drylogs); write(d); }
     if(!d.table){ d.table = d.sample===false ? { name:"", meets:"", where:"", members:[], referrals:[], rotations:[] } : clone(SEED.table); write(d); }
     return d; }
@@ -346,7 +348,14 @@
       ping:{ lat:47.6742, lng:-116.7661, at:"08:55", mph:0, heading:"parked", battery:88 } },
     { id:"v7", label:"Truck 7", techId:"t7", plate:"ID 8W–6612", unit:"2023 Ford Transit 250",
       odo:19488, serviceEveryMi:5000, lastServiceMi:15100, lastServiceOn:SHIFT("2026-07-15"),
-      ping:{ lat:47.6958, lng:-116.7791, at:"08:58", mph:0, heading:"parked", battery:57 } }
+      ping:{ lat:47.6958, lng:-116.7791, at:"08:58", mph:0, heading:"parked", battery:57 } },
+    /* the restoration crew's trucks (Nov 16 2026) */
+    { id:"v9", label:"Truck 9", techId:"t9", plate:"ID 3R–4410", unit:"2022 Ford Transit 350 (drying rig)",
+      odo:52310, serviceEveryMi:5000, lastServiceMi:49800, lastServiceOn:SHIFT("2026-06-30"),
+      ping:{ lat:47.6905, lng:-116.7735, at:"08:52", mph:0, heading:"on site", battery:71 } },
+    { id:"v10", label:"Truck 10", techId:"t10", plate:"ID 6R–2287", unit:"2020 RAM ProMaster 2500",
+      odo:88120, serviceEveryMi:5000, lastServiceMi:84650, lastServiceOn:SHIFT("2026-05-12"),
+      ping:{ lat:47.7135, lng:-116.9510, at:"08:55", mph:24, heading:"en route", battery:58 } }
   ];
 
   /* SERVICE PLANS — the maintenance agreements this shop already sells.
