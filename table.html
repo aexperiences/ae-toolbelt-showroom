@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Table · Toolbelt OS</title>
+<meta name="description" content="The weekly referral group — who sits at the table, referrals passed both ways, and whose turn is next in each rotation.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/table.html">
+<meta property="og:title" content="The Table · Toolbelt OS">
+<meta property="og:description" content="The weekly referral group — who sits at the table, referrals passed both ways, and whose turn is next in each rotation.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"table.html", crumb:"The Table" });
+  content.appendChild(S.page("The Table",
+    "The weekly referral group. One company per trade sits at the table — restoration, HVAC, plumbing, electrical, roofing, a realtor, an inspector, an insurance agent — and they pass each other work every week. This room keeps score, and keeps the rotations.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+  var me=S.db().shop.name;
+  function render(){
+    host.innerHTML="";
+    var t=S.db().table, rs=t.referrals;
+    var gave=rs.filter(function(r){return r.from===me;}), got=rs.filter(function(r){return r.to===me;});
+    var won=got.filter(function(r){return r.status==="Booked"||r.status==="Closed";}).reduce(function(a,r){return a+(r.value||0);},0);
+    host.appendChild(S.card('<div class="stats">'+
+      S.stat("Next meeting",t.meets||"—",t.name||"Name your group")+
+      S.stat("We gave",gave.length,"referrals to the table")+
+      S.stat("We got",got.length,"referrals from the table","good")+
+      (S.seesMoney&&S.seesMoney()===false?'':S.stat("Booked from the table",S.money(won),"work that came in","good"))+'</div>'));
+    host.appendChild(S.card('<h2>Who sits at the table</h2><div class="tablewrap"><table><thead><tr><th>Company</th><th>Trade</th><th>Person</th><th class="right">Gave us</th><th class="right">We gave</th></tr></thead><tbody>'+
+      t.members.map(function(m){ var g=rs.filter(function(r){return r.from===m.co&&r.to===me;}).length, w=rs.filter(function(r){return r.to===m.co&&r.from===me;}).length;
+        return '<tr><td><b>'+S.esc(m.co)+'</b>'+(m.us?' '+S.tag("us","good"):'')+'</td><td>'+S.esc(m.trade)+'</td><td>'+S.esc(m.person)+'</td><td class="right mono">'+(m.us?'—':g)+'</td><td class="right mono">'+(m.us?'—':w)+'</td></tr>'; }).join("")+'</tbody></table></div>'));
+    host.appendChild(S.card('<div class="between"><h2>Referrals passed</h2><button class="btn" id="pass">Pass a referral</button></div><div class="tablewrap"><table><thead><tr><th>Date</th><th>From → To</th><th>Customer · need</th><th>Status</th></tr></thead><tbody>'+
+      rs.map(function(r,i){ return '<tr><td class="mono small">'+S.esc(r.date)+'</td><td>'+S.esc(r.from)+' → <b>'+S.esc(r.to)+'</b></td><td>'+S.esc(r.customer)+'<div class="muted small">'+S.esc(r.need)+'</div></td>'+
+        '<td><select data-i="'+i+'">'+["Passed","Called","Working","Booked","Closed","Lost"].map(function(s){return '<option'+(s===r.status?' selected':'')+'>'+s+'</option>';}).join("")+'</select></td></tr>'; }).join("")+'</tbody></table></div>'));
+    host.appendChild(S.card('<h2>The rotations</h2><p class="sub">Some sources hand jobs out in turn — a realtor office, a property manager, an insurance program. This shows whose turn is next.</p>'+
+      t.rotations.map(function(ro){ return '<div style="margin:10px 0"><b>'+S.esc(ro.source)+'</b> · '+S.esc(ro.trade)+'<div class="muted small">'+S.esc(ro.note)+'</div><ol class="tb-steps">'+
+        ro.order.map(function(c,i){ return '<li>'+(i===ro.next?'<b>'+S.esc(c)+' — next up</b>':S.esc(c))+(c===me?' '+S.tag("us","good"):'')+'</li>'; }).join("")+'</ol></div>'; }).join("")));
+    host.querySelector("#pass").addEventListener("click",function(){
+      var to=prompt("Pass to which company at the table?\n"+t.members.filter(function(m){return !m.us;}).map(function(m){return m.co;}).join("\n")); if(!to) return;
+      var c=prompt("Customer name"); if(!c) return; var n=prompt("What do they need?")||"";
+      S.passReferral({ from:me, to:to, customer:c, need:n }); S.toast("Referral passed to "+to+".","ok"); render(); });
+    Array.prototype.forEach.call(host.querySelectorAll("select[data-i]"),function(sel){
+      sel.addEventListener("change",function(){ S.moveReferral(+sel.getAttribute("data-i"), sel.value); S.toast("Updated.","ok"); }); });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

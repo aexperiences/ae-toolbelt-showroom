@@ -70,7 +70,7 @@
     return { _t:now(), started:now(), sample:true, tier:"grandsuite", adds:[], offs:[],
       shop:clone(SEED.shop), techs:clone(SEED.techs), customers:clone(SEED.customers),
       jobs:clone(SEED.jobs), calls:clone(SEED.calls), trucks:clone(SEED.trucks), memberships:clone(SEED.memberships), parts:clone(SEED.parts), applicants:clone(SEED.applicants),
-      referrers:clone(SEED.referrers), estimates:clone(SEED.estimates),
+      referrers:clone(SEED.referrers), estimates:clone(SEED.estimates), drylogs:clone(SEED.drylogs), table:clone(SEED.table),
       documents:clone(SEED.documents), systems:clone(SEED.systems),
       approvals:clone(SEED.approvals), bus:[], seq:1 };
   }
@@ -83,6 +83,8 @@
     if(!d.calls){ d.calls = d.sample===false ? [] : clone(SEED.calls); write(d); }
     if(!d.trucks){ d.trucks = d.sample===false ? [] : clone(SEED.trucks); write(d); }
     if(!d.memberships){ d.memberships = d.sample===false ? [] : clone(SEED.memberships); write(d); }
+    if(!d.drylogs){ d.drylogs = d.sample===false ? [] : clone(SEED.drylogs); write(d); }
+    if(!d.table){ d.table = d.sample===false ? { name:"", meets:"", where:"", members:[], referrals:[], rotations:[] } : clone(SEED.table); write(d); }
     return d; }
   function save(mut){ var d=db(); mut(d); write(d); return d; }
 
@@ -95,9 +97,73 @@
     { k:"Electrical",   color:"#e4a62b", note:"Panels, circuits, fixtures, service upgrades." },
     { k:"Refrigeration",color:"#7a5aa8", note:"Commercial refrigeration and ice machines." },
     { k:"Drain",        color:"#8a6d3b", note:"Cabling, hydro-jetting, camera inspection." },
-    { k:"Appliance",    color:"#c0568f", note:"In-home appliance diagnosis and repair." }
+    { k:"Appliance",    color:"#c0568f", note:"In-home appliance diagnosis and repair." },
+    { k:"Restoration",  color:"#2f6fb5", note:"Water, flood, mold, fire and radon." }
   ];
   function tradeColor(k){ var t=TRADES.filter(function(x){return x.k===k;})[0]; return t?t.color:"#8391a0"; }
+
+  /* ====================================================================
+     THE TRADE SWITCH (Nov 15 2026). Anthony: "turn this into a HVAC, Plumbing,
+     Electrician, Restoration OS all called toolbelt... You switch the module with
+     a toggle." Same pattern as Truss OS: one core every trade shop shares
+     (dispatch, trucks, time clock, quotes, invoicing, payroll, licenses, paper),
+     and a MODULE per trade for the part that is different. Flip the switch and
+     the shop re-tools: its job steps, its paperwork, its licenses, its permit
+     rules and the board it watches. "All trades" is the multi-trade shop.
+     ==================================================================== */
+  var TRADE_MODS = {
+    all: { k:"all", name:"All trades", ic:"✚", color:"#5b6b7c", trades:null,
+      tagline:"HVAC, plumbing and electrical under one roof — the whole board at once.",
+      stages:["Call in","Book","Dispatch","On site","Done & signed","Invoiced"],
+      paper:["Work order","Customer signature","Invoice"],
+      licences:[], permits:[], jobs:[],
+      money:"Every trade on one board, one payroll and one set of books.",
+      watch:"Open jobs, trucks on site, and money waiting." },
+    hvac: { k:"hvac", name:"HVAC", ic:"❄", color:"#e4832b", trades:["HVAC","Refrigeration"],
+      tagline:"Heating, cooling, heat pumps and refrigeration.",
+      stages:["Call in","Diagnose","Quote & approve","Repair or install","Start-up & test","Service plan"],
+      paper:["Equipment record (make, model, serial)","Refrigerant log for EPA 608","Start-up and commissioning sheet","Maintenance checklist"],
+      licences:["EPA 608 Universal","NATE certification"],
+      permits:["Refrigerant circuit work","Gas line alteration"],
+      jobs:["No heat","No cool","Heat pump install","Furnace tune-up","Ductless mini-split","Refrigerant leak"],
+      money:"Service plans and seasonal tune-ups carry the slow months; installs are the big tickets.",
+      watch:"Callbacks inside thirty days and service-plan visits coming due." },
+    plumbing: { k:"plumbing", name:"Plumbing", ic:"⧫", color:"#2f7d8c", trades:["Plumbing","Drain"],
+      tagline:"Supply, drain, fixtures, water heaters and sewer lines.",
+      stages:["Call in","Locate & camera","Quote & approve","Repair or replace","Pressure test & inspection","Follow-up"],
+      paper:["Sewer camera video","Pressure-test record","Backflow test report","Permit and inspection card"],
+      licences:["Journeyman plumber","Gas fitter","Backflow tester"],
+      permits:["Water heater replacement","Sewer / water service replacement","Backflow assembly test","Gas line alteration"],
+      jobs:["Clogged drain","Water heater","Leak under sink","Sewer line","Frozen pipe","Backflow test"],
+      money:"Water heaters and sewer lines are the big tickets; drain calls fill the day.",
+      watch:"Permits waiting on inspection and backflow tests coming due." },
+    electrical: { k:"electrical", name:"Electrical", ic:"ϟ", color:"#d39a1f", trades:["Electrical"],
+      tagline:"Panels, circuits, lighting, EV chargers and generators.",
+      stages:["Call in","Troubleshoot","Quote & approve","Rough-in","Inspection","Trim-out & power on"],
+      paper:["Load calculation","Panel schedule","Permit with rough and final inspection","Arc-fault and ground-fault test"],
+      licences:["Journeyman electrician","Master electrician"],
+      permits:["Electrical service / panel change","New circuit / rough-in"],
+      jobs:["Panel upgrade","EV charger","Generator hookup","Breaker keeps tripping","New circuit","Lighting"],
+      money:"Panel upgrades, EV chargers and generators are the big tickets.",
+      watch:"Inspections waiting and work only a licensed journeyman may sign." },
+    restoration: { k:"restoration", name:"Restoration", ic:"≈", color:"#2f6fb5", trades:["Restoration"],
+      tagline:"Water, flood, mold, fire and radon — on call twenty-four hours.",
+      stages:["First call (24/7)","On site in hours","Extract & tear-out","Dry & read daily","Dry goal met","Rebuild","Certificate of completion"],
+      paper:["Work authorization signed on site","Photo log, room by room","Daily drying log (moisture, humidity, temperature, grains)","Equipment log (air movers, dehumidifiers)","Insurance estimate","Certificate of completion"],
+      licences:["IICRC WRT (water)","IICRC ASD (drying)","IICRC AMRT (mold)","IICRC FSRT (fire & smoke)","EPA RRP (lead-safe)"],
+      permits:["Mold removal over 10 square feet","Tear-out in a home built before 1978"],
+      jobs:["Burst pipe","Flooded basement","Mold in the crawlspace","Kitchen fire","Sewage backup","Radon test"],
+      money:"Most of the money comes through insurance claims, and the drying log is what gets the job paid.",
+      watch:"Jobs with no drying reading today and claims waiting on the adjuster." }
+  };
+  var TRADE_ORDER = ["all","hvac","plumbing","electrical","restoration"];
+  function tradeMods(){ return TRADE_ORDER.map(function(k){ return TRADE_MODS[k]; }); }
+  function tradeMode(){ var k=db().tradeMode; return TRADE_MODS[k] ? k : "all"; }
+  function tradeMod(){ return TRADE_MODS[tradeMode()]; }
+  function setTradeMode(k){ if(!TRADE_MODS[k]) return db(); return save(function(d){ d.tradeMode=k;
+    (d.bus=d.bus||[]).push({ stamp:iso(TODAY), from:"Owner", to:"Shop", body:"Trade switched to "+TRADE_MODS[k].name+"." }); }); }
+  /* True when a record of this trade belongs on screen in the current mode. */
+  function inMode(trade){ var m=tradeMod(); return !m.trades || m.trades.indexOf(trade)>=0; }
 
   var JOB_TYPES = ["Service call","Diagnostic","Repair","Install / replace","Maintenance (agreement)","Emergency","Warranty callback","Estimate"];
 
@@ -127,7 +193,9 @@
     { k:"Water heater replacement",          lic:"Journeyman plumber",     why:"Replacement requires a permit and inspection in most jurisdictions." },
     { k:"Sewer / water service replacement", lic:"Journeyman plumber",     why:"Right-of-way work; permit plus utility locate required." },
     { k:"Refrigerant circuit work",          lic:"EPA 608 Universal",      why:"Federal law: no refrigerant handling without EPA 608 certification." },
-    { k:"Backflow assembly test",            lic:"Backflow tester",        why:"Only a certified tester may sign the report the water purveyor accepts." }
+    { k:"Backflow assembly test",            lic:"Backflow tester",        why:"Only a certified tester may sign the report the water purveyor accepts." },
+    { k:"Mold removal over 10 square feet",  lic:"IICRC AMRT (mold)",      why:"EPA guidance: mold over ten square feet calls for trained remediators and containment." },
+    { k:"Tear-out in a home built before 1978", lic:"EPA RRP (lead-safe)", why:"Federal rule: disturbing paint in a pre-1978 home needs an EPA lead-safe certified firm and renovator." }
   ];
   function permitRule(task){ return PERMIT_WORK.filter(function(p){ return p.k===task; })[0] || null; }
   function needsPermit(task){ return !!permitRule(task); }
@@ -153,7 +221,12 @@
     { k:"Journeyman plumber",      required:false, note:"State card. Required for permitted plumbing." },
     { k:"Gas fitter",              required:false, note:"Required for any gas piping alteration." },
     { k:"Backflow tester",         required:false, note:"Certifies assemblies to the water purveyor." },
-    { k:"NATE certification",      required:false, note:"HVAC competency credential customers recognise." }
+    { k:"NATE certification",      required:false, note:"HVAC competency credential customers recognise." },
+    { k:"IICRC WRT (water)",       required:false, note:"Water damage restoration technician." },
+    { k:"IICRC ASD (drying)",      required:false, note:"Applied structural drying." },
+    { k:"IICRC AMRT (mold)",       required:false, note:"Applied microbial remediation — mold." },
+    { k:"IICRC FSRT (fire & smoke)",required:false, note:"Fire and smoke restoration." },
+    { k:"EPA RRP (lead-safe)",     required:false, note:"Lead-safe work in homes built before 1978." }
   ];
   var LIC_WARN_DAYS = 45;
 
@@ -513,6 +586,53 @@
       note:"No licence, no vehicle, availability does not match." }
   ];
 
+  /* RESTORATION · THE DRYING LOG (Nov 15 2026). A sample book: the readings
+     restoration crews take once a day until every wet material reaches its
+     dry goal (the reading of the same material in a room that never got wet).
+     IICRC S500 asks for it; the insurance adjuster pays on it. */
+  SEED.drylogs = [
+    { id:"w1", customer:"Hendricks", city:"Coeur d'Alene", loss:"Burst supply line in the hall bathroom",
+      category:1, cls:2, started:iso(addDays(TODAY,-2)), carrier:"Homeowner's insurance", claim:"(claim number)",
+      airMovers:6, dehus:2, tech:"t4",
+      rooms:[ { name:"Hall bathroom", material:"Drywall", goal:12, readings:[38,24,15] },
+              { name:"Hallway",       material:"Subfloor",goal:14, readings:[31,22,16] },
+              { name:"Bedroom 2",     material:"Carpet pad (pulled)", goal:0, readings:[] } ],
+      atmo:[ { rh:68, temp:72, gpp:83 }, { rh:44, temp:76, gpp:61 }, { rh:36, temp:78, gpp:52 } ] },
+    { id:"w2", customer:"Ochoa", city:"Post Falls", loss:"Basement flooded — sump pump failed",
+      category:2, cls:3, started:iso(addDays(TODAY,-1)), carrier:"Homeowner's insurance", claim:"(claim number)",
+      airMovers:10, dehus:3, tech:"t6",
+      rooms:[ { name:"Basement family room", material:"Drywall", goal:12, readings:[41] },
+              { name:"Basement bedroom",     material:"Drywall", goal:12, readings:[36] } ],
+      atmo:[ { rh:74, temp:66, gpp:73 } ] }
+  ];
+  /* THE TABLE — the weekly referral group. One company per trade sits at the table;
+     they meet every week and pass each other work. Realtor offices, property managers
+     and insurance programs can also hand jobs out IN TURN (a rotation). Sample names. */
+  SEED.table = {
+    name:"Thursday Trades Table", meets:"Thursdays · 7:00 AM", where:"Set by the group",
+    members:[
+      { co:"Selkirk Mechanical", trade:"HVAC, plumbing, electrical", person:"Dale Kirby", us:true },
+      { co:"Lakeshore Restoration", trade:"Restoration", person:"(owner)" },
+      { co:"Hayden Lake Roofing", trade:"Roofing", person:"(owner)" },
+      { co:"North Shore Realty", trade:"Real estate", person:"(agent)" },
+      { co:"Kootenai Home Inspections", trade:"Home inspection", person:"(inspector)" },
+      { co:"Lake City Insurance", trade:"Insurance agent", person:"(agent)" },
+      { co:"Riverbend Property Mgmt", trade:"Property management", person:"(manager)" }
+    ],
+    referrals:[
+      { date:iso(addDays(TODAY,-6)), from:"Lakeshore Restoration", to:"Selkirk Mechanical", customer:"Hendricks", need:"Re-pipe the burst supply line", status:"Booked", value:1850 },
+      { date:iso(addDays(TODAY,-5)), from:"Selkirk Mechanical", to:"Lakeshore Restoration", customer:"Ochoa", need:"Flooded basement — dry-out", status:"Working", value:0 },
+      { date:iso(addDays(TODAY,-4)), from:"North Shore Realty", to:"Selkirk Mechanical", customer:"Listing on Mullan Ave", need:"Furnace check before closing", status:"Closed", value:240 },
+      { date:iso(addDays(TODAY,-3)), from:"Kootenai Home Inspections", to:"Lakeshore Restoration", customer:"Buyer on 4th St", need:"Mold found in the crawlspace", status:"Passed", value:0 },
+      { date:iso(addDays(TODAY,-1)), from:"Selkirk Mechanical", to:"Hayden Lake Roofing", customer:"Patel", need:"Roof leak over the furnace closet", status:"Passed", value:0 }
+    ],
+    rotations:[
+      { source:"North Shore Realty office", trade:"HVAC", order:["Selkirk Mechanical","Pine Street Heating","Blue Flame HVAC"], next:1,
+        note:"Inspection repairs go to the next company in line." },
+      { source:"Riverbend Property Mgmt", trade:"Restoration", order:["Lakeshore Restoration","Summit Restoration"], next:0,
+        note:"Water calls go out by turn; answer fast or the turn passes." }
+    ]
+  };
   SEED.referrers = [
     { id:"r1", org:"Fairmount Builders", contact:"Jeanette Pruitt", type:"General contractor",
       phone:"(208) 555-0206", city:"Post Falls", lastTouch:iso(addDays(TODAY,-5)), cadenceDays:14,
@@ -1002,6 +1122,18 @@
   function pipelineCounts(){ var m={}; ATS_STAGES.forEach(function(s){m[s]=0;});
     db().applicants.forEach(function(a){ m[a.stage]=(m[a.stage]||0)+1; }); return m; }
 
+
+  /* Drying log math. Day 0 is the day the loss started; a reading is due every day until dry. */
+  function dryDay(w){ return Math.max(0, Math.round((new Date(iso(TODAY)+"T12:00:00") - new Date(w.started+"T12:00:00"))/86400000)); }
+  function dryRoomState(r){ if(!r.readings.length) return r.goal===0 ? "removed" : "no reading"; var last=r.readings[r.readings.length-1]; return last<=r.goal ? "dry" : "wet"; }
+  function dryIsDry(w){ return w.rooms.every(function(r){ var s=dryRoomState(r); return s==="dry"||s==="removed"; }); }
+  function dryDueToday(w){ if(dryIsDry(w)) return false; var need=dryDay(w)+1; return w.rooms.some(function(r){ return r.goal>0 && r.readings.length<need; }); }
+  function addDryReading(id, values, atmo){ return save(function(d){ var w=(d.drylogs||[]).filter(function(x){return x.id===id;})[0]; if(!w) return;
+    w.rooms.forEach(function(r,i){ if(values[i]!==undefined && values[i]!=="" && !isNaN(+values[i])) r.readings.push(+values[i]); });
+    if(atmo) w.atmo.push(atmo);
+    (d.bus=d.bus||[]).push({ stamp:iso(TODAY), from:"Field", to:"Office", body:"Drying reading logged for "+w.customer+"." }); }); }
+  function passReferral(rec){ return save(function(d){ d.table.referrals.unshift(Object.assign({ date:iso(TODAY), status:"Passed", value:0 }, rec)); }); }
+  function moveReferral(i, status){ return save(function(d){ var r=d.table.referrals[i]; if(r) r.status=status; }); }
   function referralOverdue(r){ if(!r.cadenceDays) return false;
     return Math.abs(daysUntil(r.lastTouch)||0) > r.cadenceDays; }
   function referralConversion(r){ return r.ytd ? (r.converted/r.ytd)*100 : 0; }
@@ -2211,6 +2343,7 @@
       { href:"field.html",     label:"Field & Proof",   ic:"◉", room:"field",    accent:"field" , icon:"icons/checkin.svg"},
       { href:"worksheets.html",label:"Worksheets & Permits",ic:"✎", room:"work", accent:"work" , icon:"icons/worksheets.svg"},
       { href:"checkpoints.html",label:"Checkpoints",        ic:"☑", room:"work", accent:"work" , icon:"icons/comply.svg"},
+      { href:"drying.html",    label:"Drying Log",          ic:"≈", accent:"field", icon:"icons/measure.svg"},
       { href:"timeclock.html", label:"Time Clock",          ic:"◷", accent:"field", icon:"icons/timeclock.svg" } ]},
     { group:"The Trucks", items:[
       { href:"licences.html",  label:"Licences",        ic:"⛨", room:"licences", accent:"licence" , icon:"icons/law.svg"},
@@ -2223,6 +2356,7 @@
       { href:"reviews.html",   label:"Reviews",         ic:"★", accent:"estimate", icon:"icons/reviews.svg" },
       { href:"plans.html",     label:"Service Plans",   ic:"❉", room:"plans",    accent:"money" , icon:"icons/tuition.svg"},
       { href:"referrals.html", label:"Referral CRM",    ic:"◈", room:"crm",      accent:"crm", icon:"icons/referral-crm.svg" },
+      { href:"table.html",     label:"The Table",       ic:"◈", accent:"crm", icon:"icons/connect.svg" },
       { href:"portal.html",    label:"Customer Portal", ic:"☗", room:"portal",   accent:"portal", icon:"icons/customer-portal.svg" },
       { href:"recruiting.html",label:"Recruiting · ATS",ic:"★", room:"recruit",  accent:"recruit" , icon:"icons/hr.svg"} ]},
     { group:"Paper", items:[
@@ -2230,6 +2364,7 @@
       { href:"documents.html", label:"Documents",       ic:"▤", room:"docs",     accent:"sign" , icon:"icons/documents.svg"},
       { href:"law.html",       label:"Law · Contracts", ic:"⚖" } ]},
     { group:"The House", items:[
+      { href:"trades.html",    label:"Trade Switch",    ic:"✚", accent:"ops", icon:"icons/command-center.svg" },
       { href:"hr.html",        label:"HR · People Ops", ic:"☷" },
       { href:"it.html",        label:"IT · System Health", ic:"♥" },
       { href:"manual.html",    label:"Owner's Manual",  ic:"?" },
@@ -2550,6 +2685,8 @@
     arrive:arrive, depart:depart, assign:assign, addJob:addJob, removeJob:removeJob, setPermit:setPermit,
     estimateValue:estimateValue, winRate:winRate, moveEstimate:moveEstimate, addEstimate:addEstimate,
     screenScore:screenScore, moveApplicant:moveApplicant, addApplicant:addApplicant, pipelineCounts:pipelineCounts,
+    dryDay:dryDay, dryRoomState:dryRoomState, dryIsDry:dryIsDry, dryDueToday:dryDueToday, addDryReading:addDryReading, passReferral:passReferral, moveReferral:moveReferral,
+    TRADE_MODS:TRADE_MODS, tradeMods:tradeMods, tradeMode:tradeMode, tradeMod:tradeMod, setTradeMode:setTradeMode, inMode:inMode,
     referralOverdue:referralOverdue, referralConversion:referralConversion, topReferrers:topReferrers, logTouch:logTouch,
     createDoc:createDoc, sendDoc:sendDoc, openDoc:openDoc, signDoc:signDoc, docsAwaiting:docsAwaiting,
     fillTemplate:fillTemplate, docContext:docContext,

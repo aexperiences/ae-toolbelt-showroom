@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trade Switch · Toolbelt OS</title>
+<meta name="description" content="One Toolbelt core for HVAC, plumbing, electrical and restoration — flip the switch and the shop re-tools.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/trades.html">
+<meta property="og:title" content="Trade Switch · Toolbelt OS">
+<meta property="og:description" content="One Toolbelt core for HVAC, plumbing, electrical and restoration — flip the switch and the shop re-tools.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"trades.html", crumb:"Trade Switch" });
+  content.appendChild(S.page("Trade Switch",
+    "One Toolbelt for every trade. Most of a trade shop is the same everywhere — the calls, the trucks, the time clock, the quotes, the invoices, the payroll. Toolbelt runs that once, and a switch swaps in the part that is different for your trade.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+  function li(a){ return '<ul class="tb-list">'+a.map(function(x){return '<li>'+S.esc(x)+'</li>';}).join("")+'</ul>'; }
+  function render(){
+    host.innerHTML="";
+    var cur=S.tradeMod();
+    host.appendChild(S.card('<h2>The switch</h2><p class="sub">Pick the trade. Everything else in the shop stays put.</p>'+
+      '<div class="tb-trades">'+S.tradeMods().map(function(m){
+        return '<button class="tb-trade'+(m.k===cur.k?' on':'')+'" data-k="'+m.k+'" style="--tc:'+m.color+'" aria-pressed="'+(m.k===cur.k)+'">'+
+          '<span class="tb-ic">'+m.ic+'</span><b>'+S.esc(m.name)+'</b><span class="small">'+S.esc(m.tagline)+'</span></button>'; }).join("")+'</div>'));
+    if(cur.k==="all"){
+      host.appendChild(S.card('<h2>Running all trades</h2><p>'+S.esc(cur.tagline)+' Pick one trade above to see how the shop re-tools for it.</p>'));
+    } else {
+      host.appendChild(S.card('<h2 style="color:'+cur.color+'">'+S.esc(cur.name)+' — switched on now</h2><p>'+S.esc(cur.money)+'</p>'+
+        '<div class="tb-cols">'+
+        '<div><h3>The job, step by step</h3><ol class="tb-steps">'+cur.stages.map(function(x){return '<li>'+S.esc(x)+'</li>';}).join("")+'</ol></div>'+
+        '<div><h3>The paperwork it keeps</h3>'+li(cur.paper)+'</div>'+
+        '<div><h3>Licenses it tracks</h3>'+li(cur.licences)+'</div>'+
+        '<div><h3>Work that needs a permit or a card</h3>'+li(cur.permits)+'</div>'+
+        '<div><h3>The calls that come in</h3>'+li(cur.jobs)+'</div>'+
+        '<div><h3>What the owner watches</h3><p>'+S.esc(cur.watch)+'</p></div></div>'+
+        (cur.k==="restoration"?'<p><a class="btn" href="drying.html">Open the Drying Log</a></p>':'')));
+    }
+    host.appendChild(S.card('<h2>What every trade shares</h2><p class="sub">The same in every mode. Nothing here changes when you flip the switch.</p>'+
+      li(["Calls, web booking and the switchboard","Dispatch board and live trucks on the map","Field check-in, photos and customer signature — with no signal","Time clock and pay math","Quotes with no markup shown, invoices and card payments","Who sees the money, seat by seat","Licenses, documents, e-sign and HR","The Table — the weekly referral group"])));
+    Array.prototype.forEach.call(host.querySelectorAll("[data-k]"),function(b){
+      b.addEventListener("click",function(){ S.setTradeMode(b.getAttribute("data-k")); S.toast("Switched to "+S.tradeMod().name+" — the shop re-tools.","ok"); render(); }); });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

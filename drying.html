@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drying Log · Toolbelt OS</title>
+<meta name="description" content="Restoration drying log — daily moisture readings room by room until every material reaches its dry goal.">
+<link rel="canonical" href="https://www.aexperiences.com/apps/toolbelt/drying.html">
+<meta property="og:title" content="Drying Log · Toolbelt OS">
+<meta property="og:description" content="Restoration drying log — daily moisture readings room by room until every material reaches its dry goal.">
+<meta property="og:image" content="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<link rel="apple-touch-icon" href="https://www.aexperiences.com/Toolbelt_OS.png">
+<meta name="theme-color" content="#e4832b">
+<link rel="stylesheet" href="toolbelt.css">
+</head>
+<body>
+<script src="toolbelt.js"></script>
+<script src="manual.js"></script>
+<script>
+(function(){
+  var S = window.Toolbelt;
+  var content = S.mount({ active:"drying.html", crumb:"Drying Log" });
+  content.appendChild(S.page("Drying Log",
+    "Restoration. One reading a day on every wet wall and floor until each one reaches its dry goal — the reading of the same material in a room that never got wet. The adjuster pays on this log.",""));
+  var host=document.createElement("div"); content.appendChild(host);
+  function render(){
+    host.innerHTML="";
+    var ws=S.db().drylogs||[], due=ws.filter(S.dryDueToday), dry=ws.filter(S.dryIsDry);
+    host.appendChild(S.card('<div class="stats">'+
+      S.stat("Jobs drying",ws.length-dry.length,"Equipment on site")+
+      S.stat("Reading due today",due.length,due.length?"Take today's readings":"All read today",due.length?"watch":"good")+
+      S.stat("Dry goal met",dry.length,"Ready to pull equipment","good")+
+      S.stat("Air movers out",ws.reduce(function(a,w){return a+(S.dryIsDry(w)?0:w.airMovers);},0),"Plus "+ws.reduce(function(a,w){return a+(S.dryIsDry(w)?0:w.dehus);},0)+" dehumidifiers")+'</div>'));
+    ws.forEach(function(w){
+      var day=S.dryDay(w), n=day+1;
+      var cols=[]; for(var i=0;i<n;i++) cols.push('<th class="right">Day '+(i+1)+'</th>');
+      var rows=w.rooms.map(function(r){ var st=S.dryRoomState(r);
+        var cells=[]; for(var i=0;i<n;i++){ var v=r.readings[i]; cells.push('<td class="right mono">'+(v===undefined?'<span class="muted">—</span>':v+'%')+'</td>'); }
+        return '<tr><td><b>'+S.esc(r.name)+'</b><div class="muted small">'+S.esc(r.material)+'</div></td><td class="right mono">'+(r.goal?r.goal+'%':'—')+'</td>'+cells.join("")+
+          '<td>'+(st==="dry"?'<span class="tb-dry-ok">Dry</span>':st==="removed"?'<span class="muted">Removed</span>':'<span class="tb-dry-wet">'+(st==="wet"?'Still wet':'No reading')+'</span>')+'</td></tr>'; }).join("");
+      var a=w.atmo[w.atmo.length-1]||{};
+      host.appendChild(S.card('<div class="between"><div><h2>'+S.esc(w.customer)+' · '+S.esc(w.city)+'</h2><div class="sub">'+S.esc(w.loss)+' · water category '+w.category+', class '+w.cls+' · day '+(day+1)+' · '+S.esc(w.carrier)+'</div></div>'+
+        (S.dryDueToday(w)?S.tag("reading due today","watch"):S.dryIsDry(w)?S.tag("dry goal met","good"):S.tag("read today","good"))+'</div>'+
+        '<div class="tablewrap"><table><thead><tr><th>Room</th><th class="right">Dry goal</th>'+cols.join("")+'<th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+        '<p class="small muted">Inside air, last reading: '+(a.rh!==undefined?a.rh+'% humidity · '+a.temp+'°F · '+a.gpp+' grains per pound':'none yet')+' · '+w.airMovers+' air movers, '+w.dehus+' dehumidifiers on site.</p>'+
+        (S.dryIsDry(w)?'':'<p><button class="btn" data-r="'+w.id+'">Log today\'s readings</button></p>')));
+    });
+    if(!ws.length) host.appendChild(S.card('<p>No jobs drying. A water job starts its log here.</p>'));
+    Array.prototype.forEach.call(host.querySelectorAll("[data-r]"),function(b){
+      b.addEventListener("click",function(){ var w=ws.filter(function(x){return x.id===b.getAttribute("data-r");})[0];
+        var vals=w.rooms.map(function(r){ return r.goal? prompt(r.name+" — "+r.material+" moisture reading (%)", "") : undefined; });
+        if(vals.every(function(v){return v===null||v===undefined||v==="";})) return;
+        S.addDryReading(w.id, vals.map(function(v){return v===null?undefined:v;}), null); S.toast("Readings logged.","ok"); render(); }); });
+  }
+  render();
+})();
+</script>
+</body>
+</html>
